@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Military Gentleman Trainer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Military Gentleman Trainer — offline runtime.
+  RULES (see docs/prd.md):
+  - ZERO network calls. No CDN, no fetch, no web fonts. Everything local.
+  - Card images are pre-generated at author-time (scripts/generate-cards.mjs)
+    and only render here once approved:true in exercises.js.
+  - Log store: localStorage key "mgt.log.v1" — { version: 1, entries: LogEntry[] }.
+  - Active plan id: localStorage key "mgt.activePlan".
+-->
+<style>
+:root{
+  --navy:#0f172a; --slate:#64748b; --blue:#2563eb; --blue2:#dbeafe;
+  --bg:#f6f8fb; --card:#ffffff; --ink:#18212f; --line:#e5e7eb;
+  --green:#16a34a; --amber:#d97706; --red:#dc2626;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+header{background:var(--navy);color:#fff;padding:34px 40px}
+header h1{margin:0 0 6px;font-size:32px;font-weight:700}
+header p{margin:0;color:#cbd5e1;font-size:15px}
+main{max-width:1200px;margin:28px auto;padding:0 24px 60px}
+section{margin:28px 0}
+h2{font-size:24px;margin:0 0 14px;border-left:5px solid var(--blue);padding-left:12px}
+h3{font-size:18px;margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:16px 0;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.exercise-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.exercise-card img{max-width:100%;border-radius:10px;display:block}
+.dose{color:var(--slate);font-size:13px;margin:4px 0 0}
+.works{font-size:13px;color:var(--slate);margin:8px 0 0}
+.works b{color:var(--ink);font-weight:600}
+.mistake{border-left:4px solid var(--amber);background:#fffbeb;border-radius:8px;padding:8px 10px;font-size:13px;margin:8px 0 0}
+.mistake .no{color:var(--red);font-weight:600}
+.mistake .yes{color:var(--green);font-weight:600}
+.cues{margin:8px 0 0;padding-left:18px;font-size:13px}
+.cues li{margin:2px 0}
+.placeholder{background:#f1f5f9;border:1px dashed var(--line);border-radius:10px;padding:28px 12px;text-align:center;color:var(--slate);font-size:13px}
+.pill{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;background:var(--blue2);color:#1e40af}
+footer{color:var(--slate);font-size:12px;margin-top:36px;text-align:center}
+</style>
+</head>
+<body>
+<header>
+<h1>Military Gentleman Trainer</h1>
+<p>Home training field manual — offline, printable, evidence-building.</p>
+</header>
+<main>
+<section id="status">
+<h2>Foundation Plan v1</h2>
+<div id="plan-status" class="card"><p>Loading plan data…</p></div>
+</section>
+<section id="sessions">
+<h2>Sessions</h2>
+<div id="session-list"></div>
+</section>
+<footer>Runs fully offline from this folder. Cards appear here once generated and approved.</footer>
+</main>
+<script src="exercises.js"></script>
+<script src="plan.js"></script>
+<script>
+(function () {
+  "use strict";
+  // Stub view (Phase 0): plan summary + per-session card slots.
+  // Approved cards render their image; un-approved show a calm placeholder — never a broken image.
+  var statusEl = document.getElementById("plan-status");
+  var listEl = document.getElementById("session-list");
+
+  if (typeof MGT_PLANS === "undefined" || typeof MGT_EXERCISES === "undefined") {
+    statusEl.innerHTML = "<p>Plan data files (exercises.js, plan.js) not found next to this file.</p>";
+    return;
+  }
+
+  var activeId = "foundation-v1";
+  try { activeId = localStorage.getItem("mgt.activePlan") || activeId; } catch (e) { /* private mode — default */ }
+  var plan = MGT_PLANS.find(function (p) { return p.id === activeId; }) || MGT_PLANS[0];
+  var byId = {};
+  MGT_EXERCISES.forEach(function (ex) { byId[ex.id] = ex; });
+
+  var approvedCount = MGT_EXERCISES.filter(function (ex) { return ex.approved; }).length;
+  statusEl.innerHTML =
+    "<h3>" + plan.name + "</h3>" +
+    "<p>Source: " + plan.source + "</p>" +
+    "<p><span class='pill'>" + plan.sessions.length + " sessions</span> " +
+    "<span class='pill'>" + MGT_EXERCISES.length + " exercises</span> " +
+    "<span class='pill'>" + approvedCount + " cards approved</span></p>" +
+    "<p class='dose'>Progression: " + plan.progression.length + "-stage build-up ramp (weeks 1–" +
+    plan.progression[plan.progression.length - 1].weekTo + ").</p>";
+
+  plan.sessions.forEach(function (session) {
+    var sec = document.createElement("div");
+    sec.className = "card";
+    var html = "<h3>" + session.title + "</h3><p class='dose'>" + session.purpose + "</p><div class='grid'>";
+    session.exerciseIds.forEach(function (id) {
+      var ex = byId[id];
+      if (!ex) { return; }
+      html += "<div class='exercise-card'>";
+      if (ex.approved && ex.image) {
+        html += "<img src='" + ex.image + "' alt='" + ex.name + " instructional illustration'>";
+      } else {
+        html += "<div class='placeholder'>Illustration pending generation &amp; approval</div>";
+      }
+      // Text-free-image strategy: the image carries only drawings;
+      // all wording renders here from exercises.js (always perfectly spelled).
+      html += "<h3 style='margin-top:10px'>" + ex.name + "</h3><p class='dose'>" + ex.dose + "</p>";
+      html += "<p class='works'><b>Works:</b> " + ex.muscles + "</p>";
+      html += "<div class='mistake'><span class='no'>✗ " + ex.commonMistake + "</span><br><span class='yes'>✓ " + ex.correct + "</span></div>";
+      html += "<ul class='cues'>" + ex.cues.map(function (c) { return "<li>" + c + "</li>"; }).join("") + "</ul>";
+      html += "</div>";
+    });
+    html += "</div>";
+    sec.innerHTML = html;
+    listEl.appendChild(sec);
+  });
+})();
+</script>
+</body>
+</html>

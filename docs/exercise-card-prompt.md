@@ -1,5 +1,7 @@
 # Exercise Card Generation — Master Prompt & Samples
 
+> **Revision 2026-07-06 — text-free images.** The first Strength A batch showed the image model reliably draws the *movement* but reliably garbles the *text* ("Shourlgrss", "Sommon mistake", truncations). Decision (Ivan): the generated image now contains **no text at all** — only figures, motion arrows, the blue/grey/faded encoding, a soft muscle glow, and a red-X/green-check mistake inset. All wording (title, legend, Works, mistake/correct, safety cues) is rendered by `trainer.html` and the print sheet **as real HTML text from `exercises.js`**, where spelling is always perfect and typography follows `docs/design.md`. The master prompt below is kept for the visual standard it defines; `scripts/generate-cards.mjs` § `buildPrompt()` holds the executable text-free variant.
+
 This is the **source of truth** for generating the printable exercise cards used by the Military Gentleman Trainer. Cards are generated **occasionally, at author-time** (when adding or refreshing an exercise) via the OpenAI Images API, then saved as PNGs into `images/` and displayed offline by the trainer.
 
 ## How to use
