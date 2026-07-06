@@ -1,0 +1,26 @@
+# === Secrets — NEVER commit ===
+.env
+.env.*
+!.env.example
+
+# === Node (for the author-time generation script) ===
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# === OS / editor cruft ===
+.DS_Store
+Thumbs.db
+*.swp
+
+# === Local tooling (re-installable via skills-lock.json) ===
+.claude/settings.local.json
+.claude/skills/
+.agents/skills/
+
+# === Scratch ===
+*.tmp
+tmp/
+
+# NOTE: exercise card images (images/*.png, *.webp) ARE committed as backup.
+# If the folder grows too large, revisit (Git LFS or a separate asset store).
