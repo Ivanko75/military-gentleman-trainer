@@ -187,6 +187,46 @@ The Strength A/B split is **derived from the KB's stated purposes**, matching ea
 
 ---
 
+## Backlog — v1 Assessment & Picture Challenges (2026-07-08)
+
+> Recorded after the Phase 1+2 build ([PR #1](https://github.com/Ivanko75/military-gentleman-trainer/pull/1)). Two parts: what we learned about the picture pipeline (constraints to respect, not re-discover), and open items for a next iteration.
+
+### Picture-pipeline challenges (learnings — do not re-litigate)
+
+1. **API text rendering is the bottleneck.** `gpt-image-1` via `images/edits` garbles 1–3 words on ~90% of text-dense cards ("Keees follow toes", "Common mitstae", "Glue = moving area"). ChatGPT's renderer of the *same verbatim prompts* was clean 2/2 (Ivan's band-row + band-chest-press). Root cause is the renderer, not the prompts.
+2. **Re-rolls don't converge.** Round 2 re-roll of all failing cards: garbles moved to different words instead of disappearing (1 net new pass); 4 cards came out *worse* and had to be restored from `images/_attempts/` (dead-bug, reverse-lunge, hip-circles, calf-stretch). Re-rolling is a random walk — stop after one retry.
+3. **Character consistency requires reference images.** The first batch (plain generations endpoint) produced a different figure per card. Fix: `images/edits` with Ivan's two cards as `image[]` refs (`CHARACTER_REFS` in `scripts/generate-cards-v2.mjs`) — this held the same guy/style across all 24 generated cards.
+4. **Cost/yield:** 2 rounds ≈ 45 images ≈ $9; per-card fully-clean-text rate ~10%. Budget accordingly or route text-dense cards through ChatGPT.
+5. **Verbatim prompts are the contract.** `scripts/prompts-ivan.mjs` is the source of truth; prompt text is never edited. Any regeneration (API or ChatGPT) starts from the exact prompt there.
+6. **Earlier pipelines are dead.** The 7-item standard-prompt pipeline and per-defect repair loop (whack-a-mole) were abandoned; `generate-cards.mjs` is superseded by `generate-cards-v2.mjs`.
+
+### v1 assessment (state at PR #1)
+
+- All 26 cards live and approved by Ivan 2026-07-08, **with known typos accepted as-is** on several API-generated cards.
+- Magic-moment loop verified fully offline: open → session → tap done → log → week count + history after reload.
+- Print verified by real headless print-to-PDF over `file://`: one exercise per page, PNG masters, date + checkbox rows.
+- `images/` optimized 29.5 → 12.1 MB (palette PNG + 640px WebP), visually lossless.
+- Duplicate-image bug (screen showed print PNG too) found by Ivan and fixed with `!important` on the `.print-only` show/hide pair.
+- No exercise has a `videoUrl` yet, so no card renders a QR code.
+
+### Backlog items
+
+- [ ] **BL-001** — Typo cleanup: re-render each typo'd card in ChatGPT from its verbatim prompt in `scripts/prompts-ivan.mjs` (Ivan renders, drops PNG in `images/`); then recompress PNG and regenerate the 640px WebP.
+  Files: `images/*.png`, `images/*.webp`
+  Notes: Per-card, no deadline; API re-rolls are not the fix path (see challenge #2).
+
+- [ ] **BL-002** — Activate QR codes: pick a demo-video URL per exercise (≤ ~76 chars for the inline QR generator), add `videoUrl` to `exercises.js`.
+  Files: `exercises.js`
+  Notes: QRs appear automatically once the field is set — no code change.
+
+- [ ] **BL-003** — TASK-028 cross-device check (carried over): copy `trainer.html` + `exercises.js` + `plan.js` + `images/` to laptop + phone; verify layout, print, QR scan, export→import round-trip.
+  Files: `trainer.html`, `images/*`
+  Notes: Ivan's step; last unchecked roadmap task.
+
+- [ ] **BL-004** — Merge [PR #1](https://github.com/Ivanko75/military-gentleman-trainer/pull/1) into `main` (Ivan's decision on github.com).
+
+---
+
 ## Agent Session Guide
 
 ### How to Use This Roadmap with Your Coding Agent
