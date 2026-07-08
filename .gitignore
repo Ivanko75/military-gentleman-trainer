@@ -24,3 +24,4 @@ tmp/
 
 # NOTE: exercise card images (images/*.png, *.webp) ARE committed as backup.
 # If the folder grows too large, revisit (Git LFS or a separate asset store).
+images/_attempts/

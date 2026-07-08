@@ -22,6 +22,23 @@ var MGT_PLANS = [
     startDate: null,
     sessions: [
       {
+        id: "warmup",
+        title: "Warm-up",
+        purpose: "Prepare joints, muscles and nervous system — 5–7 min before every strength session",
+        exerciseIds: [
+          "neck-mobility",
+          "shoulder-circles",
+          "arm-swings",
+          "thoracic-rotation",
+          "hip-circles",
+          "cat-cow",
+          "bodyweight-squat",
+          "march-in-place"
+        ],
+        // KB §4 gives the warm-up squat its own dose; the card is shared with Strength A.
+        doseOverrides: { "bodyweight-squat": "10 slow reps" }
+      },
+      {
         id: "strength-a",
         title: "Strength A",
         purpose: "Push, pull, squat, core — 30–40 min",
@@ -44,6 +61,21 @@ var MGT_PLANS = [
           "reverse-lunge",
           "band-romanian-deadlift",
           "side-plank"
+        ]
+      },
+      {
+        id: "mobility",
+        title: "Mobility",
+        purpose: "Recovery and joint quality — 12–18 min on non-strength days or after workouts",
+        exerciseIds: [
+          "doorway-chest-opener",
+          "worlds-greatest-stretch",
+          "hip-flexor-stretch",
+          "hamstring-stretch",
+          "calf-stretch",
+          "shoulder-wall-slides",
+          "childs-pose",
+          "supported-deep-squat-hold"
         ]
       }
     ],

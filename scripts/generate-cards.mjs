@@ -47,6 +47,14 @@ const REF_MODE = flag("--reference");
 // --no-ref: skip the reference-image anchor (plain generation). Useful for
 // floor exercises where the standing reference fights the composition.
 const NO_REF = flag("--no-ref");
+// --restyle: keep the CURRENT images/<id>.png composition exactly, redraw it
+// in the canonical style (uses it + the reference figure as edit inputs).
+// Playbook: --no-ref nails the pose → --restyle unifies the look.
+const RESTYLE = flag("--restyle");
+// --repair "<instruction>": narrow, single-purpose edit of the current PNG.
+// The model complies far better with one focused correction than with the
+// full 7-item checklist at once — use repeated repairs to reach 7/7.
+const REPAIR = opt("--repair");
 
 // ── .env (no dependency needed) ─────────────────────────────────────────
 function loadEnv() {
@@ -79,7 +87,7 @@ const REFERENCE_PROMPT = `Create a square reference illustration of a single sta
 
 function viewText(ex) {
   if (ex.view === "side-ground-plane") return "a side or slightly elevated side view with a clear, visible ground plane so the figure clearly reads as on the floor";
-  if (ex.view === "front") return "a front view; this is a floor exercise, so include a clear, visible ground plane";
+  if (ex.view === "front") return "a front view (or slight three-quarter view if it shows the movement better)";
   return "a side view";
 }
 
@@ -102,8 +110,27 @@ function buildPrompt(ex) {
     `Muscle highlight: mark the working muscles (${ex.muscles}) with a soft, subtle warm glow on the body — gentle and translucent, never solid red patches.`,
     `Common-mistake inset: one small panel in a corner showing the typical error (${ex.commonMistake}) marked with a red X, next to the corrected posture (${ex.correct}) marked with a green check mark. The X and check are the ONLY symbols allowed — no letters.`,
     ex.promptNotes ? `Additional instructions for this illustration: ${ex.promptNotes}` : null,
-    `One position per panel. Clarity over decoration. The illustration must remain clean, uncluttered, beginner-safe and professionally printable.`
+    `One position per panel. Clarity over decoration. The illustration must remain clean, uncluttered, beginner-safe and professionally printable.`,
+    hardRequirements(ex)
   ].filter(Boolean).join("\n\n");
+}
+
+// Non-negotiable checklist appended to EVERY prompt (generation + restyle).
+// Added 2026-07-06 after batch review showed encoding/wardrobe/arrow rules
+// being treated as suggestions when buried mid-prompt.
+function hardRequirements(ex) {
+  const lines = [
+    `HARD REQUIREMENTS — every single item below is mandatory; re-check each one before finishing:`,
+    `1. WARDROBE/CHARACTER: the exact same man in every panel and inset — short brown hair, navy #0f172a t-shirt, navy #0f172a shorts, BAREFOOT. Never grey shorts, never blue shorts, never trousers, never shoes, never a different person.`,
+    ex.movingLimbs ? `2. COLOUR ENCODING: moving limbs = ${ex.movingLimbs}. Held/support limbs = ${ex.heldLimbs}. Blue #2563eb tint on the named moving limbs only; grey #94a3b8 tint on the named held limbs only. No other limb colouring.` : `2. COLOUR ENCODING: every limb that moves is tinted blue #2563eb; every limb that supports or holds still is tinted grey #94a3b8.`,
+    `3. ARROWS: every arrow must point in the actual direction of movement described above; no decorative or reversed arrows; no arrows on held limbs.`,
+    `4. DASHED LINE: exactly one dashed reference line, tracing the alignment cue ("${ex.correct}") along the relevant body line — never floating in empty space.`,
+    `5. INSET: exactly one small corner inset containing TWO mini figures: left = the fault "${ex.commonMistake}" clearly visible and marked with a red X; right = the corrected version marked with a green check. The fault must be visibly different from the correct version.`,
+    `6. MUSCLE GLOW: a soft translucent warm glow on ${ex.muscles} only; it must not recolour or stain the clothing.`,
+    ex.id.startsWith("band-") ? `7. BAND: the elastic band is drawn as a thin flexible cord, visibly CONNECTED to its anchor point and to both hands, and taut, in EVERY frame — it never turns into a rigid bar and never disappears mid-frame.` : null,
+    `FINAL CHECK: no text anywhere; pure white background; ${ex.frames} panel(s) exactly.`
+  ].filter(Boolean);
+  return lines.join("\n");
 }
 
 // ── OpenAI calls ────────────────────────────────────────────────────────
@@ -117,13 +144,15 @@ async function callGenerations(prompt) {
   return res.json();
 }
 
-async function callEditsWithReference(prompt) {
+async function callEdits(prompt, imagePaths) {
   const form = new FormData();
   form.append("model", MODEL);
   form.append("prompt", prompt);
   form.append("size", SIZE);
   form.append("quality", QUALITY);
-  form.append("image[]", new Blob([fs.readFileSync(REFERENCE)], { type: "image/png" }), "_reference-figure.png");
+  for (const p of imagePaths) {
+    form.append("image[]", new Blob([fs.readFileSync(p)], { type: "image/png" }), path.basename(p));
+  }
   const res = await fetch("https://api.openai.com/v1/images/edits", {
     method: "POST",
     headers: { Authorization: `Bearer ${KEY}` },
@@ -131,6 +160,15 @@ async function callEditsWithReference(prompt) {
   });
   if (!res.ok) throw new Error(`edits ${res.status}: ${await res.text()}`);
   return res.json();
+}
+const callEditsWithReference = (prompt) => callEdits(prompt, [REFERENCE]);
+
+function restylePrompt(ex) {
+  return `Redraw the exercise illustration from the FIRST attached image, keeping its panel layout and body POSES exactly as they are. This is the exercise "${ex.name}": ${ex.sequence}
+
+Render it in the clean, soft-3D instructional illustration style of the SECOND attached image (the canonical reference character), using that same character — same face, hair and proportions. PURE WHITE background, no gradients or dark areas; mat light grey #f1f5f9. ABSOLUTELY NO TEXT anywhere. While keeping the poses, CORRECT any element that violates the hard requirements below (arrow directions, inset contents, wardrobe, limb colours).
+
+${hardRequirements(ex)}`;
 }
 
 function logUsage(id, json) {
@@ -150,6 +188,15 @@ async function withRetry(label, fn) {
 async function writeOutputs(id, b64) {
   const png = Buffer.from(b64, "base64");
   const pngPath = path.join(IMAGES_DIR, `${id}.png`);
+  // Archive the previous attempt before overwriting — rejected compositions
+  // are sometimes worth restyling later (see --restyle).
+  if (fs.existsSync(pngPath)) {
+    const archDir = path.join(IMAGES_DIR, "_attempts");
+    fs.mkdirSync(archDir, { recursive: true });
+    let n = 1;
+    while (fs.existsSync(path.join(archDir, `${id}.${n}.png`))) n++;
+    fs.copyFileSync(pngPath, path.join(archDir, `${id}.${n}.png`));
+  }
   fs.writeFileSync(pngPath, png);
   const { default: sharp } = await import("sharp");
   const webpPath = path.join(IMAGES_DIR, `${id}.webp`);
@@ -178,7 +225,7 @@ async function main() {
     console.error(`No exercise with id "${ONLY_ID}". Known ids:\n  ${all.map((e) => e.id).join("\n  ")}`);
     process.exit(1);
   }
-  if (!FORCE) {
+  if (!FORCE && !RESTYLE && !REPAIR) { // --restyle/--repair need the existing PNG as input
     const skipped = targets.filter((e) => fs.existsSync(path.join(IMAGES_DIR, `${e.id}.png`)));
     if (skipped.length) console.log(`Skipping ${skipped.length} existing card(s) (use --force to regenerate): ${skipped.map((e) => e.id).join(", ")}`);
     targets = targets.filter((e) => !fs.existsSync(path.join(IMAGES_DIR, `${e.id}.png`)));
@@ -194,10 +241,16 @@ async function main() {
   let failures = 0;
   for (const ex of targets) {
     console.log(`\n■ ${ex.name} (${ex.id}) — ${ex.frames} frames, ${ex.view}`);
-    const prompt = buildPrompt(ex);
+    const prompt = REPAIR
+      ? `Edit the attached exercise illustration. Keep the panel layout, poses, character, style and every other detail EXACTLY as they are. Make ONLY these corrections and change absolutely nothing else:\n\n${REPAIR}\n\nStill mandatory: no text anywhere, pure white background.`
+      : RESTYLE ? restylePrompt(ex) : buildPrompt(ex);
     if (DRY) { console.log(`\n${prompt}\n`); continue; }
     try {
-      const json = await withRetry(ex.id, () => NO_REF ? callGenerations(prompt) : callEditsWithReference(prompt));
+      const json = await withRetry(ex.id, () =>
+        REPAIR ? callEdits(prompt, [path.join(IMAGES_DIR, `${ex.id}.png`)])
+        : RESTYLE ? callEdits(prompt, [path.join(IMAGES_DIR, `${ex.id}.png`), REFERENCE])
+        : NO_REF ? callGenerations(prompt)
+        : callEditsWithReference(prompt));
       await writeOutputs(ex.id, json.data[0].b64_json);
       logUsage(ex.id, json);
       console.log(`  NOTE: card stays approved:false in exercises.js until reviewed against a known-good source.`);
