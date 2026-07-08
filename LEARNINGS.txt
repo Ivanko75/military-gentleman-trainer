@@ -1,0 +1,118 @@
+MILITARY GENTLEMAN TRAINER — LEARNINGS
+Distilled 2026-07-08 from the Phase 0-2 build thread (26 cards, PR #1).
+Purpose: read this BEFORE any card generation, image work, or review round
+so the mistakes below are made once, not twice.
+
+=====================================================================
+A. HARD RULES (violating any of these caused real rework this thread)
+=====================================================================
+
+A1. IVAN'S PROMPTS ARE VERBATIM. The 26 prompts in scripts/prompts-ivan.mjs
+    are byte-for-byte Ivan's text (curly quotes, 6'6", everything).
+    Never edit, "improve", shorten, or append checklists to them.
+    Any regeneration — API or ChatGPT — starts from the exact prompt there.
+
+A2. CHARACTER REFERENCE IS MANDATORY. Every generation must go through the
+    images/edits endpoint with Ivan's two self-made cards as image[] inputs:
+    images/band-chest-press.png + images/band-row.png (CHARACTER_REFS in
+    scripts/generate-cards-v2.mjs). MISTAKE MADE: first batch ran on the
+    plain generations endpoint without refs -> different guy on every card
+    -> Ivan stopped it mid-run -> entire batch redone at full cost.
+    Before ANY paid batch: confirm endpoint + reference inputs first.
+
+A3. ARCHIVE BEFORE OVERWRITE. Every existing PNG is copied to
+    images/_attempts/<id>.<n>.png before regeneration. This saved us:
+    round 2 made 4 cards WORSE (dead-bug, reverse-lunge, hip-circles,
+    calf-stretch) and we restored the round-1 versions from _attempts.
+
+A4. RUNTIME IS OFFLINE. trainer.html makes zero network calls, ever.
+    OPENAI_API_KEY lives only in .env (git-ignored), never referenced by
+    trainer.html, never committed.
+
+A5. GIT: stage specific files by name. Never git add . / git add -A.
+
+A6. REVIEW PROTOCOL (Ivan's standing instruction): pre-review all generated
+    artifacts myself FIRST, regenerate obvious failures autonomously, then
+    bring Ivan ONE consolidated verdict — graded item by item, any red
+    item = FAIL, tolerated defects listed plainly. Do not drip-feed images
+    one at a time for approval.
+
+=====================================================================
+B. IMAGE-PIPELINE FACTS (measured, not opinions)
+=====================================================================
+
+B1. gpt-image-1 via API garbles 1-3 words on ~90% of text-dense cards
+    ("Keees follow toes", "Common mitstae", "Glue = moving area").
+    ChatGPT's renderer produced clean text from the SAME verbatim prompts
+    (2/2 on Ivan's cards). The renderer is the bottleneck, not the prompts.
+
+B2. RE-ROLLS DO NOT CONVERGE. Re-rolling a garbled card moves the garble to
+    a different word; it does not fix it. Round 2 over all failing cards:
+    1 net new pass, 4 cards worse. Policy: max ONE retry per card, then
+    stop. The fix path for any card is: Ivan renders that one prompt in
+    ChatGPT, drops the PNG in images/, we recompress + regenerate the webp.
+
+B3. COST/YIELD: 2 rounds = ~45 images = ~$9; per-card fully-clean-text
+    rate ~10%. Budget accordingly; do not brute-force text quality via API.
+
+B4. DEAD PIPELINES: the original 7-item standard-prompt pipeline and the
+    per-defect repair loop (whack-a-mole inpainting/regeneration) are
+    ABANDONED. Do not resurrect them. generate-cards.mjs is superseded by
+    generate-cards-v2.mjs.
+
+B5. Output pair per card: 1024x1024 PNG master (print) + 640px WebP q82
+    (screen). PNGs palette-compressed via sharp (quality 90, palette true,
+    compressionLevel 9) — took images/ from 29.5 MB to 12.1 MB, visually
+    lossless. Any new/replaced PNG gets the same treatment.
+
+=====================================================================
+C. APP / CODE GOTCHAS
+=====================================================================
+
+C1. Dual-image print pattern: each card renders TWO <img> tags — screen
+    WebP (class screen-img) + print PNG (class print-only). CSS specificity
+    trap: .exercise-card img { display:block } (0,1,1) beats
+    .print-only { display:none } (0,1,0), which put two images on screen.
+    Fix in place: !important on both the screen-hide and the print-show
+    rule; the @media print rule is later in source so it wins when printing.
+    Keep this pairing intact when touching card CSS.
+
+C2. Verification quirks: node eval of exercises.js fails on const scoping —
+    verify with grep -c "approved: true" + node --check instead. Headless
+    Chrome print checks: use the file:// URL (the app's native mode), not
+    localhost. After hash-only navigation, force location.reload() before
+    re-checking rendered state.
+
+C3. QR codes appear automatically once an exercise has a videoUrl in
+    exercises.js (inline generator handles URLs up to ~76 chars). None are
+    set yet — that's backlog item BL-002, Ivan supplies the links.
+
+=====================================================================
+D. PROCESS LEARNINGS (how we work on this product)
+=====================================================================
+
+D1. Ivan is the quality bar. When generation quality plateaued, the winning
+    move was Ivan authoring the prompts and reference cards himself, and
+    the tooling adapting to HIS assets — not more prompt engineering by me.
+    If quality stalls again, hand the creative decision back to Ivan early.
+
+D2. When Ivan changes approach, the old approach dies completely. Do not
+    patch or hybridize an abandoned pipeline "just in case".
+
+D3. Known accepted defects are recorded, not hidden: current live cards
+    include typos Ivan explicitly accepted on 2026-07-08 (cleanup = BL-001,
+    ChatGPT re-render path). Never "fix" accepted cards unprompted.
+
+D4. Open loose ends live in docs/product-roadmap.md under
+    "Backlog — v1 Assessment & Picture Challenges (2026-07-08)":
+    BL-001 typo cleanup, BL-002 QR videoUrls, BL-003 cross-device check
+    (= TASK-028, the one unchecked task), BL-004 merge PR #1.
+
+=====================================================================
+HOW THIS FILE STAYS ALIVE
+=====================================================================
+- CLAUDE.md in this repo points here and is loaded automatically every
+  session in this directory. This file is the detail; CLAUDE.md stays thin.
+- New mistake -> append one entry to the relevant section here, same day.
+- A learning that turns out wrong -> delete it; a stale file is worse than
+  no file.
