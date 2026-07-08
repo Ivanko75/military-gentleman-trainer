@@ -6,15 +6,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!--
   Military Gentleman Trainer — offline runtime.
+
+  TWO-PHASE MODEL:
+  - Author-time (online, occasional): scripts/generate-cards-v2.mjs sends
+    Ivan's verbatim prompts (scripts/prompts-ivan.mjs) to the OpenAI Images
+    API and writes images/<id>.png (print master) + images/<id>.webp (screen).
+    The API key lives only in .env and is never referenced here.
+  - Runtime (this file): ZERO network calls. No CDN, no fetch, no web fonts.
+    Everything loads from this folder; copy trainer.html + images/ +
+    exercises.js + plan.js as a unit to any device.
+
   RULES (docs/prd.md):
-  - ZERO network calls. No CDN, no fetch, no web fonts. Everything local.
-  - Card images are pre-generated at author-time (scripts/generate-cards.mjs)
-    and only render here once approved:true in exercises.js. Images are
-    TEXT-FREE (PRD Resolved Decision #8) — all wording renders here as HTML.
+  - Cards render only once approved:true in exercises.js (human approval gate).
   - Log store: localStorage "mgt.log.v1" — { version: 1, entries: LogEntry[] }.
     LogEntry: { id, date (ISO), sessionId, completed: string[], note? }.
   - Active plan id: localStorage "mgt.activePlan".
   - Plan start date (drives "this week's target"): localStorage "mgt.startDate.<planId>".
+  - Print (FR-004): @media print renders the current session as an A4 sheet
+    from the PNG masters, one exercise per block, checkbox per exercise.
 -->
 <style>
 :root{
@@ -73,6 +82,22 @@ input[type=date]{font:inherit;padding:10px;border:1px solid var(--line);border-r
 .bottom-cta{position:sticky;bottom:12px;margin-top:20px;text-align:center}
 .bottom-cta .btn{box-shadow:0 4px 14px rgba(15,23,42,.18);min-width:220px}
 footer{color:var(--slate);font-size:12px;margin-top:36px;text-align:center}
+.print-only{display:none}
+@media print{
+  @page{size:A4;margin:12mm}
+  header,footer,.linkrow,.bottom-cta,.done-toggle,#banner,.session-pick,input,.btn,.target-banner{display:none !important}
+  body{background:#fff}
+  main{max-width:none;margin:0;padding:0}
+  .grid{display:block}
+  .exercise-card{page-break-inside:avoid;break-inside:avoid;border:1px solid #cbd5e1;box-shadow:none;margin:0 0 6mm;border-radius:8px}
+  .exercise-card img.screen-img{display:none}
+  .exercise-card img{max-height:150mm;margin:0 auto}
+  .print-only{display:block}
+  .print-head{font-size:13px;color:#0f172a;margin:0 0 6mm;border-bottom:1px solid #cbd5e1;padding-bottom:3mm}
+  .print-check{font-size:14px;font-weight:600;margin:8px 0 0}
+  .print-check .box{display:inline-block;width:14px;height:14px;border:2px solid #0f172a;border-radius:3px;vertical-align:-2px;margin-right:8px}
+  h2{border-left-color:#0f172a}
+}
 </style>
 </head>
 <body>
@@ -415,8 +440,10 @@ function renderSession() {
   var session = plan.sessions.find(function (s) { return s.id === state.sessionId; });
   if (!session) { state.view = "today"; return renderToday(); }
   var cs = currentStage(plan, new Date());
-  var html = "<div class='linkrow'><a id='back-today'>← Today</a></div>";
+  var html = "<div class='linkrow'><a id='back-today'>← Today</a><a id='print-sheet'>Print sheet</a></div>";
   html += "<h2>" + esc(session.title) + "</h2><p class='muted'>" + esc(session.purpose) + "</p>";
+  html += "<p class='print-only print-head'>Date: ____________________" +
+    (cs ? " &nbsp;·&nbsp; Target: " + esc(stageText(cs)) : "") + "</p>";
   if (cs) html += "<div class='target-banner'><b>This week's target:</b> " + esc(stageText(cs)) + "</div>";
   html += "<div class='grid'>";
   session.exerciseIds.forEach(function (id) {
@@ -425,7 +452,9 @@ function renderSession() {
     var isDone = !!state.done[id];
     html += "<div class='exercise-card'>";
     if (ex.approved && ex.image) {
-      html += "<img src='" + ex.image + "' alt='" + esc(ex.name) + " instructional illustration'>";
+      html += "<img class='screen-img' src='" + ex.image + "' alt='" + esc(ex.name) + " instructional illustration' " +
+        "onerror=\"this.outerHTML='<div class=placeholder>Illustration file missing — follow the cues below</div>'\">";
+      html += "<img class='print-only' src='" + (ex.printImage || ex.image) + "' alt='" + esc(ex.name) + " instructional illustration (print)'>";
     } else {
       html += "<div class='placeholder'>Illustration pending approval — follow the cues below</div>";
     }
@@ -435,6 +464,7 @@ function renderSession() {
     html += "<div class='mistake'><span class='no'>✗ " + esc(ex.commonMistake) + "</span><br><span class='yes'>✓ " + esc(ex.correct) + "</span></div>";
     html += "<ul class='cues'>" + ex.cues.map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + "</ul>";
     if (ex.videoUrl) html += "<div class='qr-wrap' data-url='" + esc(ex.videoUrl) + "'><canvas aria-label='QR code to demo video'></canvas><p class='muted'>Scan for the demo video</p></div>";
+    html += "<p class='print-only print-check'><span class='box'></span>Completed &nbsp; Sets: ______ &nbsp; Notes: ________________</p>";
     html += "<button class='done-toggle" + (isDone ? " on" : "") + "' data-ex='" + id + "' aria-pressed='" + isDone + "'>" + (isDone ? "✓ Done" : "Mark done") + "</button>";
     html += "</div>";
   });
@@ -443,6 +473,7 @@ function renderSession() {
   viewEl.innerHTML = html;
 
   document.getElementById("back-today").onclick = function () { state.view = "today"; clearBanner(); render(); };
+  document.getElementById("print-sheet").onclick = function () { window.print(); };
   viewEl.querySelectorAll(".qr-wrap").forEach(function (w) {
     QR.draw(w.querySelector("canvas"), w.dataset.url, 4);
   });
@@ -511,6 +542,10 @@ function render() {
   else if (state.view === "history") renderHistory();
   else renderToday();
 }
+/* Deep link: trainer.html#session/<id> opens that session directly
+   (bookmarkable on a phone; also used to verify the print sheet). */
+var hashMatch = location.hash.match(/^#session\/([\w-]+)$/);
+if (hashMatch) { state.view = "session"; state.sessionId = hashMatch[1]; }
 render();
 </script>
 </body>
