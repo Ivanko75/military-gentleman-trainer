@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Military Gentleman Trainer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Military Gentleman Trainer — offline runtime.
+
+  TWO-PHASE MODEL:
+  - Author-time (online, occasional): scripts/generate-cards-v2.mjs sends
+    Ivan's verbatim prompts (scripts/prompts-ivan.mjs) to the OpenAI Images
+    API and writes images/<id>.png (print master) + images/<id>.webp (screen).
+    The API key lives only in .env and is never referenced here.
+  - Runtime (this file): ZERO network calls. No CDN, no fetch, no web fonts.
+    Everything loads from this folder; copy trainer.html + images/ +
+    exercises.js + plan.js as a unit to any device.
+
+  RULES (docs/prd.md):
+  - Cards render only once approved:true in exercises.js (human approval gate).
+  - Log store: localStorage "mgt.log.v1" — { version: 1, entries: LogEntry[] }.
+    LogEntry: { id, date (ISO), sessionId, completed: string[], note? }.
+  - Active plan id: localStorage "mgt.activePlan".
+  - Plan start date (drives "this week's target"): localStorage "mgt.startDate.<planId>".
+  - Print (FR-004): @media print renders the current session as an A4 sheet
+    from the PNG masters, one exercise per block, checkbox per exercise.
+-->
+<style>
+:root{
+  --navy:#0f172a; --slate:#64748b; --blue:#2563eb; --blue2:#dbeafe;
+  --bg:#f6f8fb; --card:#ffffff; --ink:#18212f; --line:#e5e7eb;
+  --green:#16a34a; --amber:#d97706; --red:#dc2626;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+header{background:var(--navy);color:#fff;padding:24px 24px}
+header h1{margin:0 0 4px;font-size:28px;font-weight:700}
+header p{margin:0;color:#cbd5e1;font-size:14px}
+main{max-width:1200px;margin:20px auto;padding:0 16px 60px}
+h2{font-size:24px;margin:24px 0 14px;border-left:5px solid var(--blue);padding-left:12px}
+h3{font-size:18px;margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:14px 0;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.muted{color:var(--slate);font-size:13px}
+.pill{display:inline-block;border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600;background:var(--blue2);color:#1e40af;margin-right:6px}
+button{font:inherit}
+.btn{display:inline-block;min-height:44px;padding:12px 20px;border-radius:10px;border:1px solid var(--blue);background:var(--blue);color:#fff;font-weight:600;cursor:pointer;transition:background 120ms ease}
+.btn:hover{background:#1d4ed8}
+.btn:focus-visible{outline:3px solid var(--blue2)}
+.btn.ghost{background:transparent;color:var(--blue)}
+.btn.ghost:hover{background:var(--blue2)}
+.btn.green{background:var(--green);border-color:var(--green)}
+.linkrow{margin:14px 0}
+.linkrow a{color:var(--blue);font-weight:600;text-decoration:none;margin-right:18px;cursor:pointer}
+.session-pick{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;min-height:44px;cursor:pointer;transition:background 120ms ease}
+.session-pick:hover{background:var(--blue2)}
+.session-pick[disabled]{cursor:default;opacity:.65}
+.session-pick[disabled]:hover{background:var(--card)}
+.exercise-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(15,23,42,.04);display:flex;flex-direction:column}
+.exercise-card img{max-width:100%;border-radius:10px;display:block}
+.dose{color:var(--slate);font-size:13px;margin:4px 0 0}
+.works{font-size:13px;color:var(--slate);margin:8px 0 0}
+.works b{color:var(--ink);font-weight:600}
+.mistake{border-left:4px solid var(--amber);background:#fffbeb;border-radius:8px;padding:8px 10px;font-size:13px;margin:8px 0 0}
+.mistake .no{color:var(--red);font-weight:600}
+.mistake .yes{color:var(--green);font-weight:600}
+.cues{margin:8px 0 0;padding-left:18px;font-size:13px}
+.cues li{margin:2px 0}
+.placeholder{background:#f1f5f9;border:1px dashed var(--line);border-radius:10px;padding:28px 12px;text-align:center;color:var(--slate);font-size:13px}
+.done-toggle{margin-top:12px;min-height:44px;border-radius:10px;border:1px solid var(--line);background:#f8fafc;color:var(--ink);font-weight:600;cursor:pointer;transition:background 120ms ease,border-color 120ms ease}
+.done-toggle:hover{background:var(--blue2)}
+.done-toggle.on{background:#dcfce7;border-color:var(--green);color:#166534}
+.warnbox{border-left:4px solid var(--amber);background:#fffbeb;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:14px}
+.errbox{border-left:4px solid var(--red);background:#fee2e2;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:14px}
+.okbox{border-left:4px solid var(--green);background:#dcfce7;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:14px}
+.history-row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:12px 4px;font-size:15px}
+.history-row:last-child{border-bottom:none}
+.target-banner{background:var(--blue2);border-radius:10px;padding:10px 14px;margin:10px 0;font-size:15px;color:#1e40af}
+.qr-wrap{margin-top:10px;text-align:center}
+.qr-wrap canvas{image-rendering:pixelated;border:6px solid #fff;outline:1px solid var(--line)}
+input[type=date]{font:inherit;padding:10px;border:1px solid var(--line);border-radius:10px;min-height:44px}
+.bottom-cta{position:sticky;bottom:12px;margin-top:20px;text-align:center}
+.bottom-cta .btn{box-shadow:0 4px 14px rgba(15,23,42,.18);min-width:220px}
+footer{color:var(--slate);font-size:12px;margin-top:36px;text-align:center}
+.print-only{display:none !important}
+@media print{
+  @page{size:A4;margin:12mm}
+  header,footer,.linkrow,.bottom-cta,.done-toggle,#banner,.session-pick,input,.btn,.target-banner{display:none !important}
+  body{background:#fff}
+  main{max-width:none;margin:0;padding:0}
+  .grid{display:block}
+  .exercise-card{page-break-inside:avoid;break-inside:avoid;border:1px solid #cbd5e1;box-shadow:none;margin:0 0 6mm;border-radius:8px}
+  .exercise-card img.screen-img{display:none}
+  .exercise-card img{max-height:150mm;margin:0 auto}
+  .print-only{display:block !important}
+  .print-head{font-size:13px;color:#0f172a;margin:0 0 6mm;border-bottom:1px solid #cbd5e1;padding-bottom:3mm}
+  .print-check{font-size:14px;font-weight:600;margin:8px 0 0}
+  .print-check .box{display:inline-block;width:14px;height:14px;border:2px solid #0f172a;border-radius:3px;vertical-align:-2px;margin-right:8px}
+  h2{border-left-color:#0f172a}
+}
+</style>
+</head>
+<body>
+<header>
+<h1>Military Gentleman Trainer</h1>
+<p>Home training field manual — offline, printable, evidence-building.</p>
+</header>
+<main>
+<div id="banner"></div>
+<div id="view"></div>
+<footer>Runs fully offline from this folder. Your log lives only on this device — export it now and then.</footer>
+</main>
+<script src="exercises.js"></script>
+<script src="plan.js"></script>
+<script>
+/* ── Minimal QR generator (byte mode, ECC L, versions 1–4, mask 0) ──
+   Vendored inline so cards can link a demo video with no CDN (FR-003).
+   Single-block versions only — fine for URLs up to ~76 characters. */
+var QR = (function () {
+  var CAP = { 1: 19, 2: 34, 3: 55, 4: 80 };          // data codewords, ECC L
+  var ECC = { 1: 7, 2: 10, 3: 15, 4: 20 };           // ecc codewords, ECC L
+  var ALIGN = { 2: 18, 3: 22, 4: 26 };               // alignment centre (v>1)
+  var EXP = new Array(512), LOG = new Array(256);
+  (function () { var x = 1; for (var i = 0; i < 255; i++) { EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 256) x ^= 0x11d; } for (var j = 255; j < 512; j++) EXP[j] = EXP[j - 255]; })();
+  function rs(data, ecLen) {
+    var gen = [1];
+    for (var i = 0; i < ecLen; i++) {
+      gen.push(0);
+      for (var j = gen.length - 1; j > 0; j--) gen[j] = gen[j - 1] ^ (gen[j] ? EXP[(LOG[gen[j]] + i) % 255] : 0);
+      gen[0] = EXP[(LOG[gen[0]] + i) % 255];
+    }
+    // gen built ascending-degree-unstable above; rebuild multiplicatively (safe way):
+    gen = [1];
+    for (var k = 0; k < ecLen; k++) {
+      var next = new Array(gen.length + 1).fill(0);
+      for (var g = 0; g < gen.length; g++) {
+        next[g] ^= gen[g] ? EXP[(LOG[gen[g]] + k) % 255] : 0;
+        next[g + 1] ^= gen[g];
+      }
+      gen = next;
+    }
+    var rem = new Array(ecLen).fill(0);
+    for (var d = 0; d < data.length; d++) {
+      var f = data[d] ^ rem[0];
+      rem.shift(); rem.push(0);
+      if (f) for (var e = 0; e < ecLen; e++) rem[e] ^= gen[e + 1] ? EXP[(LOG[f] + LOG[gen[e + 1]]) % 255] : 0;
+    }
+    return rem;
+  }
+  function make(text) {
+    var bytes = []; // UTF-8 encode
+    for (var ch of unescape(encodeURIComponent(text))) bytes.push(ch.charCodeAt(0));
+    var ver = null;
+    for (var v = 1; v <= 4; v++) if (bytes.length + 2 <= CAP[v]) { ver = v; break; }
+    if (!ver) return null;
+    var size = 17 + 4 * ver;
+    // bit stream: mode 0100, count (8 bits), data, terminator, pad
+    var bits = [];
+    function push(val, n) { for (var i = n - 1; i >= 0; i--) bits.push((val >> i) & 1); }
+    push(4, 4); push(bytes.length, 8);
+    bytes.forEach(function (b) { push(b, 8); });
+    push(0, Math.min(4, CAP[ver] * 8 - bits.length));
+    while (bits.length % 8) bits.push(0);
+    var data = [];
+    for (var i = 0; i < bits.length; i += 8) data.push(parseInt(bits.slice(i, i + 8).join(""), 2));
+    var pads = [0xec, 0x11], p = 0;
+    while (data.length < CAP[ver]) data.push(pads[p++ % 2]);
+    var all = data.concat(rs(data, ECC[ver]));
+    // matrix
+    var m = [], used = [];
+    for (var r = 0; r < size; r++) { m.push(new Array(size).fill(0)); used.push(new Array(size).fill(false)); }
+    function set(r, c, val) { m[r][c] = val ? 1 : 0; used[r][c] = true; }
+    function finder(r, c) {
+      for (var dr = -1; dr <= 7; dr++) for (var dc = -1; dc <= 7; dc++) {
+        var rr = r + dr, cc = c + dc;
+        if (rr < 0 || cc < 0 || rr >= size || cc >= size) continue;
+        var on = dr >= 0 && dr <= 6 && dc >= 0 && dc <= 6 &&
+          (dr === 0 || dr === 6 || dc === 0 || dc === 6 || (dr >= 2 && dr <= 4 && dc >= 2 && dc <= 4));
+        set(rr, cc, on);
+      }
+    }
+    finder(0, 0); finder(0, size - 7); finder(size - 7, 0);
+    for (var t = 8; t < size - 8; t++) { set(6, t, t % 2 === 0); set(t, 6, t % 2 === 0); } // timing
+    if (ALIGN[ver]) {
+      var ac = ALIGN[ver];
+      for (var ar = -2; ar <= 2; ar++) for (var acol = -2; acol <= 2; acol++)
+        set(ac + ar, ac + acol, Math.max(Math.abs(ar), Math.abs(acol)) !== 1);
+    }
+    set(size - 8, 8, 1); // dark module
+    // reserve format areas
+    for (var f = 0; f <= 8; f++) {
+      if (!used[8][f]) used[8][f] = true;
+      if (!used[f][8]) used[f][8] = true;
+      if (!used[8][size - 1 - f]) used[8][size - 1 - f] = true;
+      if (!used[size - 1 - f][8]) used[size - 1 - f][8] = true;
+    }
+    // place data, zigzag, mask 0: (r+c)%2===0 flips
+    var bi = 0, total = all.length * 8;
+    function bit(n) { return (all[n >> 3] >> (7 - (n & 7))) & 1; }
+    var col = size - 1, up = true;
+    while (col > 0) {
+      if (col === 6) col--;
+      for (var step = 0; step < size; step++) {
+        var row = up ? size - 1 - step : step;
+        for (var side = 0; side < 2; side++) {
+          var cc2 = col - side;
+          if (used[row][cc2]) continue;
+          var val = bi < total ? bit(bi) : 0; bi++;
+          if ((row + cc2) % 2 === 0) val ^= 1; // mask 0
+          m[row][cc2] = val; used[row][cc2] = true;
+        }
+      }
+      up = !up; col -= 2;
+    }
+    // format info: ECC L (01) + mask 0 (000) → 5 bits 01000
+    var fmt = 8; // 0b01000
+    var rem2 = fmt << 10;
+    for (var b2 = 14; b2 >= 10; b2--) if ((rem2 >> b2) & 1) rem2 ^= 0x537 << (b2 - 10);
+    var fbits = ((fmt << 10) | rem2) ^ 0x5412;
+    function fbit(i) { return (fbits >> i) & 1; }
+    for (var i2 = 0; i2 <= 5; i2++) m[8][i2] = fbit(14 - i2);
+    m[8][7] = fbit(8); m[8][8] = fbit(7); m[7][8] = fbit(6);
+    for (var i3 = 0; i3 <= 5; i3++) m[i3][8] = fbit(i3) ? 1 : 0;
+    for (var i4 = 0; i4 <= 5; i4++) m[i4][8] = fbit(i4);
+    for (var i5 = 0; i5 < 7; i5++) m[size - 1 - i5][8] = fbit(i5 + 8) ? 0 : 0; // rebuilt below
+    // (clean re-place of the two format copies to avoid index slips)
+    var seq1 = [[8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],[8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8]];
+    var seq2 = [[size-1,8],[size-2,8],[size-3,8],[size-4,8],[size-5,8],[size-6,8],[size-7,8],[8,size-8],[8,size-7],[8,size-6],[8,size-5],[8,size-4],[8,size-3],[8,size-2],[8,size-1]];
+    for (var s = 0; s < 15; s++) {
+      var vbit = (fbits >> (14 - s)) & 1;
+      m[seq1[s][0]][seq1[s][1]] = vbit;
+      m[seq2[s][0]][seq2[s][1]] = vbit;
+    }
+    m[size - 8][8] = 1; // dark module stays
+    return m;
+  }
+  function draw(canvas, text, scale) {
+    var m = make(text);
+    if (!m) return false;
+    var s = scale || 4, size = m.length;
+    canvas.width = canvas.height = size * s;
+    var ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#0f172a";
+    for (var r = 0; r < size; r++) for (var c = 0; c < size; c++) if (m[r][c]) ctx.fillRect(c * s, r * s, s, s);
+    return true;
+  }
+  return { draw: draw };
+})();
+
+/* ── Data access ── */
+var exercisesById = {};
+MGT_EXERCISES.forEach(function (ex) { exercisesById[ex.id] = ex; });
+function activePlan() {
+  var id = "foundation-v1";
+  try { id = localStorage.getItem("mgt.activePlan") || id; } catch (e) {}
+  return MGT_PLANS.find(function (p) { return p.id === id; }) || MGT_PLANS[0];
+}
+function getStartDate(plan) {
+  try { var v = localStorage.getItem("mgt.startDate." + plan.id); if (v) return v; } catch (e) {}
+  return plan.startDate;
+}
+function setStartDate(plan, iso) {
+  try { localStorage.setItem("mgt.startDate." + plan.id, iso); return true; }
+  catch (e) { showBanner("err", "Couldn't save the start date (storage unavailable). It will reset on reload."); plan.startDate = iso; return true; }
+}
+function currentWeek(plan, today) {
+  var start = getStartDate(plan);
+  if (!start) return null;
+  var days = Math.floor((today - new Date(start + "T00:00:00")) / 86400000);
+  if (days < 0) return 1;
+  return Math.floor(days / 7) + 1;
+}
+function currentStage(plan, today) {
+  var week = currentWeek(plan, today);
+  if (week === null) return null;
+  var stage = plan.progression.find(function (s) { return week >= s.weekFrom && week <= s.weekTo; });
+  return { week: week, stage: stage || plan.progression[plan.progression.length - 1], beyond: !stage };
+}
+function stageText(cs) {
+  if (!cs) return "";
+  var s = cs.stage;
+  var txt = "Week " + cs.week + " · " + s.sets + " · " + s.resistance + " · reps: " + s.reps;
+  if (cs.beyond) txt = "Week " + cs.week + " (ramp complete — hold week 7–8 standard) · " + s.sets + " · reps: " + s.reps;
+  return txt;
+}
+
+/* ── Log store (FR-006..010) ── */
+var LOG_KEY = "mgt.log.v1";
+var memLog = null;        // in-memory truth; never lost on storage failure
+var corruptBackup = null; // kept if stored JSON was unreadable
+function loadLog() {
+  if (memLog) return memLog;
+  var empty = { version: 1, entries: [] };
+  try {
+    var raw = localStorage.getItem(LOG_KEY);
+    if (!raw) { memLog = empty; return memLog; }
+    var parsed = JSON.parse(raw);
+    if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.entries)) throw new Error("bad shape");
+    memLog = parsed;
+  } catch (e) {
+    try { corruptBackup = localStorage.getItem(LOG_KEY); } catch (e2) {}
+    showBanner("warn", "Your stored log couldn't be read, so the app started with an empty one. The old data is kept in memory this session — export it from History if you need it.");
+    memLog = empty;
+  }
+  return memLog;
+}
+function persistLog() {
+  try { localStorage.setItem(LOG_KEY, JSON.stringify(memLog)); return true; }
+  catch (e) {
+    showBanner("err", "Couldn't save to this browser's storage (full or private mode). Your session is safe in memory — export your log now, then clear old entries.");
+    return false;
+  }
+}
+function saveEntry(entry) { loadLog(); memLog.entries.push(entry); return persistLog(); }
+function weekCount() {
+  var now = new Date(), wk = isoWeekKey(now);
+  return loadLog().entries.filter(function (en) { return isoWeekKey(new Date(en.date)) === wk; }).length;
+}
+function isoWeekKey(d) {
+  var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  var day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  var y = t.getUTCFullYear();
+  var week = Math.ceil(((t - Date.UTC(y, 0, 1)) / 86400000 + 1) / 7);
+  return y + "-W" + week;
+}
+function exportLog() {
+  var blob = new Blob([JSON.stringify(loadLog(), null, 2)], { type: "application/json" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "mgt-log-" + new Date().toISOString().slice(0, 10) + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+}
+function importLog(file, mode, cb) {
+  var reader = new FileReader();
+  reader.onload = function () {
+    try {
+      var parsed = JSON.parse(reader.result);
+      if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.entries)) throw new Error("wrong shape");
+      var ok = parsed.entries.every(function (en) { return en && en.id && en.date && en.sessionId && Array.isArray(en.completed); });
+      if (!ok) throw new Error("bad entries");
+      loadLog();
+      if (mode === "replace") { memLog.entries = parsed.entries; }
+      else {
+        var have = {};
+        memLog.entries.forEach(function (en) { have[en.id] = true; });
+        parsed.entries.forEach(function (en) { if (!have[en.id]) memLog.entries.push(en); });
+        memLog.entries.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+      }
+      persistLog();
+      cb(null, parsed.entries.length);
+    } catch (e) { cb("That file isn't a valid trainer log (expected version 1 with an entries list). Nothing was changed."); }
+  };
+  reader.onerror = function () { cb("Couldn't read that file. Nothing was changed."); };
+  reader.readAsText(file);
+}
+
+/* ── UI ── */
+var viewEl = document.getElementById("view");
+var bannerEl = document.getElementById("banner");
+var state = { view: "today", sessionId: null, done: {} };
+function showBanner(kind, text) {
+  var cls = kind === "err" ? "errbox" : kind === "ok" ? "okbox" : "warnbox";
+  bannerEl.innerHTML = "<div class='" + cls + "'>" + text + "</div>";
+}
+function clearBanner() { bannerEl.innerHTML = ""; }
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+function approvedCount(session) {
+  return session.exerciseIds.filter(function (id) { var ex = exercisesById[id]; return ex && ex.approved; }).length;
+}
+
+function renderToday() {
+  var plan = activePlan();
+  var cs = currentStage(plan, new Date());
+  var html = "<h2>Today</h2><div class='card'>";
+  html += "<h3>" + esc(plan.name) + "</h3>";
+  if (cs) {
+    html += "<div class='target-banner'><b>This week's target:</b> " + esc(stageText(cs)) + "</div>";
+    if (cs.stage.note) html += "<p class='muted'>" + esc(cs.stage.note) + "</p>";
+  } else {
+    html += "<div class='warnbox'>Set your start date to begin week tracking:<br><br>" +
+      "<input type='date' id='start-date'> <button class='btn' id='save-start'>Save start date</button></div>";
+  }
+  html += "<p><span class='pill'>" + weekCount() + " session" + (weekCount() === 1 ? "" : "s") + " this week</span></p>";
+  html += "</div>";
+
+  html += "<h2>Sessions</h2>";
+  plan.sessions.forEach(function (s) {
+    var ac = approvedCount(s), total = s.exerciseIds.length;
+    var ready = ac > 0;
+    html += "<button class='session-pick' data-session='" + s.id + "'" + (ready ? "" : " disabled") + ">" +
+      "<h3>" + esc(s.title) + "</h3><p class='muted'>" + esc(s.purpose) + "</p>" +
+      (ready ? "<span class='pill'>" + ac + "/" + total + " illustrations ready</span>"
+             : "<span class='pill' style='background:#f1f5f9;color:var(--slate)'>Coming soon — illustrations in production</span>") +
+      "</button>";
+  });
+
+  html += "<div class='linkrow'><a id='go-history'>History</a><a id='do-export'>Export log</a><a id='do-import'>Import log</a>" +
+    "<input type='file' id='import-file' accept='application/json,.json' style='display:none'></div>" +
+    "<div id='import-zone'></div>";
+  if (loadLog().entries.length === 0) html += "<p class='muted'>No workouts yet — pick a session to begin.</p>";
+  viewEl.innerHTML = html;
+
+  var sd = document.getElementById("save-start");
+  if (sd) sd.onclick = function () {
+    var v = document.getElementById("start-date").value;
+    if (!v) { showBanner("warn", "Pick a date first."); return; }
+    setStartDate(plan, v); clearBanner(); renderToday();
+  };
+  viewEl.querySelectorAll(".session-pick[data-session]:not([disabled])").forEach(function (b) {
+    b.onclick = function () { state.view = "session"; state.sessionId = b.dataset.session; state.done = {}; clearBanner(); render(); };
+  });
+  document.getElementById("go-history").onclick = function () { state.view = "history"; clearBanner(); render(); };
+  document.getElementById("do-export").onclick = exportLog;
+  var fileInput = document.getElementById("import-file");
+  document.getElementById("do-import").onclick = function () { fileInput.click(); };
+  fileInput.onchange = function () {
+    if (!fileInput.files[0]) return;
+    var f = fileInput.files[0];
+    var zone = document.getElementById("import-zone");
+    zone.innerHTML = "<div class='card'>Import <b>" + esc(f.name) + "</b>: " +
+      "<button class='btn ghost' id='imp-merge'>Merge with current log</button> " +
+      "<button class='btn ghost' id='imp-replace'>Replace current log</button> " +
+      "<button class='btn ghost' id='imp-cancel'>Cancel</button><div id='imp-msg'></div></div>";
+    function done(err, n) {
+      if (err) { document.getElementById("imp-msg").innerHTML = "<div class='errbox'>" + esc(err) + "</div>"; return; }
+      zone.innerHTML = "";
+      showBanner("ok", "Imported " + n + " entries."); renderToday();
+    }
+    document.getElementById("imp-merge").onclick = function () { importLog(f, "merge", done); };
+    document.getElementById("imp-replace").onclick = function () { importLog(f, "replace", done); };
+    document.getElementById("imp-cancel").onclick = function () { zone.innerHTML = ""; fileInput.value = ""; };
+  };
+}
+
+function renderSession() {
+  var plan = activePlan();
+  var session = plan.sessions.find(function (s) { return s.id === state.sessionId; });
+  if (!session) { state.view = "today"; return renderToday(); }
+  var cs = currentStage(plan, new Date());
+  var html = "<div class='linkrow'><a id='back-today'>← Today</a><a id='print-sheet'>Print sheet</a></div>";
+  html += "<h2>" + esc(session.title) + "</h2><p class='muted'>" + esc(session.purpose) + "</p>";
+  html += "<p class='print-only print-head'>Date: ____________________" +
+    (cs ? " &nbsp;·&nbsp; Target: " + esc(stageText(cs)) : "") + "</p>";
+  if (cs) html += "<div class='target-banner'><b>This week's target:</b> " + esc(stageText(cs)) + "</div>";
+  html += "<div class='grid'>";
+  session.exerciseIds.forEach(function (id) {
+    var ex = exercisesById[id];
+    if (!ex) return;
+    var isDone = !!state.done[id];
+    html += "<div class='exercise-card'>";
+    if (ex.approved && ex.image) {
+      html += "<img class='screen-img' src='" + ex.image + "' alt='" + esc(ex.name) + " instructional illustration' " +
+        "onerror=\"this.outerHTML='<div class=placeholder>Illustration file missing — follow the cues below</div>'\">";
+      html += "<img class='print-only' src='" + (ex.printImage || ex.image) + "' alt='" + esc(ex.name) + " instructional illustration (print)'>";
+    } else {
+      html += "<div class='placeholder'>Illustration pending approval — follow the cues below</div>";
+    }
+    var dose = (session.doseOverrides && session.doseOverrides[id]) || ex.dose;
+    html += "<h3 style='margin-top:10px'>" + esc(ex.name) + "</h3><p class='dose'>" + esc(dose) + "</p>";
+    html += "<p class='works'><b>Works:</b> " + esc(ex.muscles) + "</p>";
+    html += "<div class='mistake'><span class='no'>✗ " + esc(ex.commonMistake) + "</span><br><span class='yes'>✓ " + esc(ex.correct) + "</span></div>";
+    html += "<ul class='cues'>" + ex.cues.map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + "</ul>";
+    if (ex.videoUrl) html += "<div class='qr-wrap' data-url='" + esc(ex.videoUrl) + "'><canvas aria-label='QR code to demo video'></canvas><p class='muted'>Scan for the demo video</p></div>";
+    html += "<p class='print-only print-check'><span class='box'></span>Completed &nbsp; Sets: ______ &nbsp; Notes: ________________</p>";
+    html += "<button class='done-toggle" + (isDone ? " on" : "") + "' data-ex='" + id + "' aria-pressed='" + isDone + "'>" + (isDone ? "✓ Done" : "Mark done") + "</button>";
+    html += "</div>";
+  });
+  html += "</div>";
+  html += "<div class='bottom-cta'><button class='btn green' id='log-session'>Log session (<span id='done-count'>0</span>/" + session.exerciseIds.length + ")</button></div>";
+  viewEl.innerHTML = html;
+
+  document.getElementById("back-today").onclick = function () { state.view = "today"; clearBanner(); render(); };
+  document.getElementById("print-sheet").onclick = function () { window.print(); };
+  viewEl.querySelectorAll(".qr-wrap").forEach(function (w) {
+    QR.draw(w.querySelector("canvas"), w.dataset.url, 4);
+  });
+  function refreshCount() {
+    document.getElementById("done-count").textContent = Object.keys(state.done).filter(function (k) { return state.done[k]; }).length;
+  }
+  viewEl.querySelectorAll(".done-toggle").forEach(function (b) {
+    b.onclick = function () {
+      var id = b.dataset.ex;
+      state.done[id] = !state.done[id];
+      b.classList.toggle("on", state.done[id]);
+      b.setAttribute("aria-pressed", String(state.done[id]));
+      b.textContent = state.done[id] ? "✓ Done" : "Mark done";
+      refreshCount();
+    };
+  });
+  refreshCount();
+  document.getElementById("log-session").onclick = function () {
+    var completed = session.exerciseIds.filter(function (id) { return state.done[id]; });
+    var entry = {
+      id: "log-" + Date.now(),
+      date: new Date().toISOString(),
+      sessionId: session.id,
+      completed: completed
+    };
+    saveEntry(entry);
+    state.view = "today"; state.done = {};
+    showBanner("ok", "Session logged: " + esc(session.title) + " — " + completed.length + "/" + session.exerciseIds.length + " exercises. Well done.");
+    render();
+  };
+}
+
+function renderHistory() {
+  var plan = activePlan();
+  var titles = {};
+  plan.sessions.forEach(function (s) { titles[s.id] = s.title; });
+  var entries = loadLog().entries.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+  var html = "<div class='linkrow'><a id='back-today'>← Today</a></div><h2>History</h2>";
+  if (corruptBackup) html += "<div class='warnbox'>An unreadable old log is held in memory this session. <a id='export-corrupt' style='color:var(--blue);cursor:pointer'>Download it raw</a> to keep it.</div>";
+  if (entries.length === 0) {
+    html += "<div class='card'><p class='muted'>Your logged sessions will appear here.</p></div>";
+  } else {
+    html += "<div class='card'>";
+    entries.forEach(function (en) {
+      var d = new Date(en.date);
+      var sTotal = (plan.sessions.find(function (s) { return s.id === en.sessionId; }) || { exerciseIds: [] }).exerciseIds.length;
+      html += "<div class='history-row'><span>" + d.toLocaleDateString() + " <span class='muted'>" + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + "</span></span>" +
+        "<span>" + esc(titles[en.sessionId] || en.sessionId) + "</span>" +
+        "<span class='muted'>" + en.completed.length + "/" + (sTotal || "?") + "</span></div>";
+    });
+    html += "</div>";
+  }
+  viewEl.innerHTML = html;
+  document.getElementById("back-today").onclick = function () { state.view = "today"; clearBanner(); render(); };
+  var ec = document.getElementById("export-corrupt");
+  if (ec) ec.onclick = function () {
+    var blob = new Blob([corruptBackup], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "mgt-log-corrupt-backup.json";
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+}
+
+function render() {
+  if (state.view === "session") renderSession();
+  else if (state.view === "history") renderHistory();
+  else renderToday();
+}
+/* Deep link: trainer.html#session/<id> opens that session directly
+   (bookmarkable on a phone; also used to verify the print sheet). */
+var hashMatch = location.hash.match(/^#session\/([\w-]+)$/);
+if (hashMatch) { state.view = "session"; state.sessionId = hashMatch[1]; }
+render();
+</script>
+</body>
+</html>

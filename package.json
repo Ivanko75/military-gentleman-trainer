@@ -1,0 +1,13 @@
+{
+  "name": "military-gentleman-trainer",
+  "private": true,
+  "type": "module",
+  "description": "Author-time tooling only — the runtime (trainer.html) has no build step and no dependencies.",
+  "scripts": {
+    "generate": "node scripts/generate-cards.mjs",
+    "generate:reference": "node scripts/generate-cards.mjs --reference"
+  },
+  "dependencies": {
+    "sharp": "^0.33.0"
+  }
+}

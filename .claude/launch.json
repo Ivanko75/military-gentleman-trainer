@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "trainer",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/preview-server.mjs"],
+      "port": 8931
+    }
+  ]
+}
