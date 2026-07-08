@@ -82,7 +82,7 @@ input[type=date]{font:inherit;padding:10px;border:1px solid var(--line);border-r
 .bottom-cta{position:sticky;bottom:12px;margin-top:20px;text-align:center}
 .bottom-cta .btn{box-shadow:0 4px 14px rgba(15,23,42,.18);min-width:220px}
 footer{color:var(--slate);font-size:12px;margin-top:36px;text-align:center}
-.print-only{display:none}
+.print-only{display:none !important}
 @media print{
   @page{size:A4;margin:12mm}
   header,footer,.linkrow,.bottom-cta,.done-toggle,#banner,.session-pick,input,.btn,.target-banner{display:none !important}
@@ -92,7 +92,7 @@ footer{color:var(--slate);font-size:12px;margin-top:36px;text-align:center}
   .exercise-card{page-break-inside:avoid;break-inside:avoid;border:1px solid #cbd5e1;box-shadow:none;margin:0 0 6mm;border-radius:8px}
   .exercise-card img.screen-img{display:none}
   .exercise-card img{max-height:150mm;margin:0 auto}
-  .print-only{display:block}
+  .print-only{display:block !important}
   .print-head{font-size:13px;color:#0f172a;margin:0 0 6mm;border-bottom:1px solid #cbd5e1;padding-bottom:3mm}
   .print-check{font-size:14px;font-weight:600;margin:8px 0 0}
   .print-check .box{display:inline-block;width:14px;height:14px;border:2px solid #0f172a;border-radius:3px;vertical-align:-2px;margin-right:8px}
