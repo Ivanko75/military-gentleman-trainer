@@ -45,5 +45,18 @@ _(Validated 2026-07-06 — see `docs/validation-report.md`. Verdict: Strong, pro
 2. **[MEDIUM]** `localStorage` is durable enough to be trusted as "evidence" — requires an export/backup (download-your-log) built into v1, not deferred.
 3. **[MEDIUM]** Browser Print-to-PDF reliably produces a clean A4 sheet (no mid-exercise page splits, scannable QR) without manual fiddling.
 
+## Phase 3 — Habit Engine (validated 2026-07-11)
+_v1 shipped and proven; this extension turns the menu into a coach. Verdict: Strong (see `docs/validation-report.md`)._
+
+- **Core assumption:** when the app decides what today's session is (KB weekly routine) instead of offering a menu, Ivan executes consistently enough to survive the weeks 3–8 motivation dip.
+- **Scope now:** (1) "Today is..." scheduling — KB weekly routine as a *suggestion* with 1-tap override, plus the KB "never skip twice in a row" nudge; (2) warm-up-first flow — strength sessions open with the 8-card warm-up chain + completion checklist, skippable.
+- **Scope later (~week 4, when first monthly check is naturally due):** (3) monthly mobility self-assessment (KB's 6 movements → localStorage, month-over-month evidence).
+- **Folded in:** (4) adherence metric lives inside the nudge as a *forgiveness metric* ("2+ strength sessions this week"), never an unbroken-streak counter.
+
+**Phase-3 risky assumptions (ranked):**
+1. **[HIGH]** Nudge copy reads as help, not scolding — first missed week is the test; guilt UI kills the habit it tracks.
+2. **[MEDIUM]** Fixed weekday mapping fits Ivan's real week — measured by override count over 2 weeks.
+3. **[MEDIUM]** Warm-up chaining lowers friction rather than adding logging bureaucracy.
+
 ## Next step
 Pressure-test this idea with the **Idea Validator** skill before planning, or run the **Product Planner** skill to turn it straight into a product vision, PRD, and roadmap. This document will pre-fill much of that work.

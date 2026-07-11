@@ -1,59 +1,58 @@
-# Validation Report — Military Gentleman Trainer (visual training dashboard)
+# Validation Report — Habit Engine (Phase 3 of Military Gentleman Trainer)
 
-_Generated: 2026-07-06_
+_Generated: 2026-07-11. Supersedes the 2026-07-06 v1 report (preserved in git history — the v1 verdict was Strong and v1 shipped)._
 
 ## Verdict
-**Strong — proceed to build.**
+**Strong — with one reshape.**
 
-The problem is real (Ivan is blocked from using content he already owns because he doesn't recognize exercises by name), the user is himself (named, reachable, committed), and the founder fit is ideal (he authored the content and works in HTML). The one risk that can still sink it is narrow and cheap: whether auto-generated line diagrams are actually recognizable. Test that in isolation before the full build.
+Ideas 1+2 (scheduling + warm-up-first) are the real Habit Engine: they test the core assumption and must land *before* the weeks 3–8 motivation dip, which is ~2 weeks away. Idea 4 survives only as a forgiveness-framed line inside the nudge (the KB's own "never skip twice" rule, not a streak counter), and idea 3 waits ~3 weeks until the first monthly self-assessment is naturally due. Risk to watch: any UI copy that reads as scolding.
 
 ## Scorecard
-_(Personal-tool axes — the commercial "will strangers pay" test does not apply to a tool built for the founder's own use.)_
+_(Personal-tool axes, as in the v1 report.)_
 
 | Area | Score | Read |
 |---|---:|---|
-| Pain intensity | 5/5 | Blocked from using content he already owns; every session, 3–5×/week. |
-| Buyer clarity | 5/5 | The user is Ivan — named, reachable, committed. |
-| Urgency | 4/5 | Mid-return-to-training now; the tool unblocks this week. |
-| Differentiation | 4/5 | Not better diagrams than MuscleWiki — but his own, offline, routine-aware, printable. |
-| Speed to validate | 4/5 | The make-or-break risk (diagrams) is testable in an hour, before building. |
-| Founder advantage | 5/5 | Authored the content, lives in self-contained HTML. Perfect fit. |
+| Pain intensity | 3/5 | Mild today (weeks 1–2, enthusiasm high); real in weeks 3–8 — a painkiller-in-waiting. |
+| Buyer clarity | 5/5 | Ivan — named, committed, mid-ramp. |
+| Urgency | 4/5 | Must ship before the dip; that's ~2 weeks away. |
+| Differentiation | 4/5 | Only the app holds the log, so only it can say "you're on track this week" — paper can't. |
+| Speed to validate | 5/5 | Two normal training weeks; the existing log is the instrument. |
+| Founder advantage | 5/5 | The KB literally specifies the weekly routine and the skip rule. |
 
 ## Core Assumption
-A generated line diagram + QR is enough for Ivan to correctly recognize and perform each exercise from a printed sheet — without a coach and without needing the exercise name he doesn't know.
+When the app decides what today's session is — instead of offering a menu — Ivan executes the KB's weekly routine consistently enough to survive the weeks 3–8 motivation dip.
 
 ## Fatal Flaws
 | Risk | Severity | Why It Matters | Fast Test |
 |---|---|---|---|
-| Auto-generated SVG line diagrams may be unrecognizable | High | This is the entire reason the tool exists; a diagram he can't decode returns him to square one, and good exercise diagrams are hard to auto-generate. | Generate diagrams for the 3 hardest exercises (Face Pull, RDL, Dead Bug); he names the movement without the label. |
-| `localStorage` "evidence" can vanish silently | Medium | He explicitly wants accumulating proof; cache-clear / private mode / device switch wipes it unnoticed. | Build download-your-log export in v1; log 2 sessions, export, clear browser, re-import. |
-| Print-to-PDF layout breaks (page splits, unscannable QR) | Medium | If the printout is ugly or splits an exercise across pages, the paper-first requirement dies. | Print one session to PDF day one; check page breaks and scan a QR off the paper. |
+| Streak mechanics backfire into a guilt UI | High | The KB rule is forgiving ("never skip **twice in a row**"); an unbroken-streak counter punishes one bad week and the evidence tool becomes a shame mirror. | Forgiveness framing ("2+ strength sessions this week", resets weekly); observe how the first missed week feels. |
+| Rigid weekday mapping fights real life | Medium | Travel or a low-energy day breaks a fixed schedule; if "Today: Strength B" argues, Ivan reverts to the menu and the feature is dead code. | Suggestion + 1-tap override; count overrides across 2 weeks — constant overriding means the mapping is wrong. |
+| Validating four features as one blob | Medium | Ideas 3+4 don't test the core assumption; shipping all four at once hides which feature earned its place. | Ship 1+2 now; add 3 when the first monthly assessment is naturally due (~week 4). |
 
 ## Problem Reality
-- **Pain:** Real, specific, recurring — a knowledge base he cannot use because names are opaque, and no growing record. Every session, 3–5×/week.
-- **Early adopter:** Ivan himself — named, reachable, motivated, 6+ months into the habit change.
-- **Vitamin or painkiller:** Painkiller for the recognition problem (he's blocked without it); vitamin for the evidence/motivation problem. The painkiller half justifies the build.
+- **Pain:** Mild right now, sharp in weeks 3–8 — decision friction at the point of use ("which session? did I warm up?") leaks willpower exactly when motivation dips. Discipline itself is proven (3× daily dog walks, 6 months of eating changes) and is not the gap.
+- **Early adopter:** Ivan at the moment he opens `trainer.html` on a training day.
+- **Vitamin or painkiller:** Vitamin today, painkiller in ~3 weeks — which is the argument for building it now; a habit scaffold installed after the habit collapses is worthless.
 
 ## Competition
-- **Current behavior:** Squint at the raw HTML, fail to recognize names, look each up on MuscleWiki/YouTube mid-session or skip it; track nothing or scribble in a notebook.
-- **Real enemy:** Friction and forgetting — not a rival app. The tool wins only if opening it beats a Google image search and logging is one tap.
-- **Differentiation needed:** Everything in one offline file that knows *his* routine, prints *his* session, logs *his* history — works with no signal in a hotel room. MuscleWiki has better diagrams but none of that.
+- **Current behavior:** The v1 session-picker + memory of the KB schedule + printed sheets.
+- **Real enemy:** Decision friction and the motivation dip — not a rival app.
+- **Differentiation needed:** The feature must *use the log* ("it's Wednesday, Strength B, you're on track"). If it doesn't, printing the KB weekly table would achieve the same for free.
 
 ## First 10 Customers
-_(Adapted — personal tool. "Customers" = getting it into his real training week to prove it works.)_
-1. **Diagram gut-check** — generate the 3 hardest exercise diagrams; success = he names the movement without the label.
-2. **One printed session** — print Strength A to PDF, train from paper only; success = completes it without reaching for the phone.
-3. **Three-session log test** — log 3 sessions over the week, then export; success = the record feels like real evidence and the export opens.
+_(Personal tool — "customers" = the next 10 training days.)_
+1. This week: train from the "Today is..." view on 2 strength days; success = zero which-session decisions.
+2. Next week: one warm-up-first chain end-to-end; success = warm-up done without deciding to do it.
+3. First disruption (travel/busy day): success = the nudge reads as help, not scolding, and training resumes next day.
 
 ## MVP
-- **Build:** Diagram test first (3 exercises). Then one HTML file: visual cards (SVG diagram + QR) for the warm-up, mobility, and Strength A/B sessions already defined in the knowledge base; tap-to-log with `localStorage` history; download-your-log export; print-to-PDF sheet.
-- **Cut:** 12-month roadmap, monthly assessment charts/graphs, all 11 library exercises at once (start with the two Strength sessions + warm-up), fancy analytics. Add after the core loop is proven.
-- **2-week test:** Use it for a full week of real sessions (paper + logging), export the log, confirm diagrams were recognizable and history survived. If diagrams fail → pivot visuals to curated MuscleWiki/Darebee video-via-QR + text cues, not the whole idea.
+- **Build:** (1) "Today is..." scheduling from the KB weekly routine — suggestion with 1-tap override + "never skip twice" forgiveness nudge ("2+ strength sessions this week"); (2) warm-up-first flow — strength sessions open with the 8 warm-up cards + completion checklist, skippable. All in `trainer.html`/`plan.js`, offline, data-driven.
+- **Cut:** Idea 3 (monthly mobility self-assessment) until ~week 4 when the first check is naturally due; idea 4 as a standalone feature (folded into the nudge); notifications, walking/steps integration, any further gamification.
+- **2-week test:** The next 2 real training weeks, measured by the existing log: sessions on scheduled days, warm-ups completed, override count. If the schedule is constantly overridden → the mapping is wrong, make the schedule editable data rather than abandoning the concept.
 
 ## Edits Applied to product-idea.md
-- **Proposed solution** — added a validated "build order": diagram gut-check (3 hardest exercises) before the full build, with a named fallback if diagrams fail.
-- **Risky assumptions** — replaced with the three severity-ranked assumptions from this report and a validation-date note.
-- `Candidates considered` section preserved unchanged.
+- Added a **"Phase 3 — Habit Engine (validated 2026-07-11)"** section: core assumption, now/later scope split (1+2 now, 3 at ~week 4, 4 folded into the nudge as a forgiveness metric), and the three ranked Phase-3 risky assumptions.
+- All v1 content, including `Candidates considered`, preserved unchanged.
 
 ## Next Step
-Run the diagram gut-check, then build v1 — or run the **Product Planner** skill to turn this into a full build plan first. The idea doc is sharpened and ready either way.
+Add Phase 3 to `docs/product-roadmap.md` (tasks for ideas 1+2 plus a deferred task for idea 3) and build — the scope is one focused session.

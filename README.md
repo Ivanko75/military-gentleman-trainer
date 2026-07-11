@@ -2,7 +2,7 @@
 
 A personal, offline home-training app for Ivan (51, 198 cm) — returning to resistance-band + bodyweight training after a break. It turns his training knowledge base into instructional exercise cards, prints A4 session sheets, and logs workouts as accumulating evidence.
 
-> Status: **v1 shipped** ([PR #1](https://github.com/Ivanko75/military-gentleman-trainer/pull/1) merged). All 26 cards live and approved; all four sessions trainable end-to-end, fully offline. 28/29 roadmap tasks done — remaining: the cross-device check, plus the backlog in `docs/product-roadmap.md` § Backlog (typo cleanup, QR video links).
+> Status: **v1 shipped; card library regenerated with Nano Banana Pro 2026-07-11** (2048px masters, clean text on 20/24 generated cards — 4 known-defect cards listed in § Backlog BL-001). **Next: Phase 3 — Habit Engine** (`docs/product-roadmap.md` § Phase 3, validated Strong): "Today is..." scheduling, warm-up-first flow, forgiveness nudge. Still open from v1: the cross-device check and QR video links.
 
 ## Using it
 Open `trainer.html` in any browser — no server, no account, no network. To train on another device, copy `trainer.html` + `exercises.js` + `plan.js` + `images/` as a unit.
@@ -14,7 +14,7 @@ Open `trainer.html` in any browser — no server, no account, no network. To tra
 - Deep link to a session: `trainer.html#session/<id>`.
 
 ## Two-phase model (important)
-- **Author-time (occasional, online):** `scripts/generate-cards-v2.mjs` sends Ivan's verbatim prompts (`scripts/prompts-ivan.mjs` — never edit them) to the OpenAI `images/edits` endpoint, with `images/band-chest-press.png` + `images/band-row.png` as character references. Needs `OPENAI_API_KEY` (platform API — **not** covered by ChatGPT Plus). `scripts/generate-cards.mjs` is the superseded v1.
+- **Author-time (occasional, online):** `scripts/generate-cards-gemini.mjs` (current) sends Ivan's verbatim prompts (`scripts/prompts-ivan.mjs` — never edit them) to Gemini `gemini-3-pro-image` ("Nano Banana Pro"), with `images/band-chest-press.png` + `images/band-row.png` as character references; 2048px output. Needs `GEMINI_API_KEY` in `.env`. Superseded: `generate-cards-v2.mjs` (OpenAI `images/edits`, `OPENAI_API_KEY`) and `generate-cards.mjs` (v1).
 - **Runtime (every workout, offline):** `trainer.html` just displays the pre-generated images. Zero network calls.
 
 ## Before touching card generation
