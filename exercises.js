@@ -81,7 +81,7 @@ var MGT_EXERCISES = [
     primaryFault: "knee collapse",
     videoCandidate: true,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "dead-bug",
@@ -103,7 +103,7 @@ var MGT_EXERCISES = [
     primaryFault: "low-back arch",
     videoCandidate: true,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "front-plank",
@@ -124,7 +124,7 @@ var MGT_EXERCISES = [
     primaryFault: "hip sag",
     videoCandidate: true,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   // ── Strength B — shoulders, back, legs, core ──────────────────────────
   {
@@ -148,7 +148,7 @@ var MGT_EXERCISES = [
     primaryFault: "lower-back arch",
     videoCandidate: true,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "band-face-pull",
@@ -172,7 +172,7 @@ var MGT_EXERCISES = [
     primaryFault: "shoulder shrug",
     videoCandidate: true,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "band-lat-pulldown",
@@ -195,7 +195,7 @@ var MGT_EXERCISES = [
     primaryFault: "behind-the-neck pull",
     videoCandidate: true,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "reverse-lunge",
@@ -219,7 +219,7 @@ var MGT_EXERCISES = [
     primaryFault: "knee collapse",
     videoCandidate: true,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "band-romanian-deadlift",
@@ -242,7 +242,7 @@ var MGT_EXERCISES = [
     primaryFault: "rounded back",
     videoCandidate: true,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "side-plank",
@@ -266,7 +266,7 @@ var MGT_EXERCISES = [
     primaryFault: "hip drop",
     videoCandidate: true,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   // ── Warm-up — KB §4 Chapter 3 (5–7 min before every strength session) ──
   {
@@ -288,7 +288,7 @@ var MGT_EXERCISES = [
     primaryFault: "forcing end range",
     videoCandidate: false,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "shoulder-circles",
@@ -309,7 +309,7 @@ var MGT_EXERCISES = [
     primaryFault: "shrugging",
     videoCandidate: false,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "arm-swings",
@@ -330,7 +330,7 @@ var MGT_EXERCISES = [
     primaryFault: "jerky movement",
     videoCandidate: false,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "thoracic-rotation",
@@ -351,7 +351,7 @@ var MGT_EXERCISES = [
     primaryFault: "hip twist",
     videoCandidate: true,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "hip-circles",
@@ -372,7 +372,7 @@ var MGT_EXERCISES = [
     primaryFault: "posture collapse",
     videoCandidate: false,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "cat-cow",
@@ -393,7 +393,7 @@ var MGT_EXERCISES = [
     primaryFault: "forcing the low back",
     videoCandidate: true,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "march-in-place",
@@ -414,7 +414,7 @@ var MGT_EXERCISES = [
     primaryFault: "overexertion",
     videoCandidate: false,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   // ── Mobility — KB §5 Chapter 4 (12–18 min, non-strength days or after) ──
   {
@@ -436,7 +436,7 @@ var MGT_EXERCISES = [
     primaryFault: "shoulder strain",
     videoCandidate: false,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "worlds-greatest-stretch",
@@ -457,7 +457,7 @@ var MGT_EXERCISES = [
     primaryFault: "lumbar rotation",
     videoCandidate: true,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "hip-flexor-stretch",
@@ -478,7 +478,7 @@ var MGT_EXERCISES = [
     primaryFault: "low-back arch",
     videoCandidate: false,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "hamstring-stretch",
@@ -499,7 +499,7 @@ var MGT_EXERCISES = [
     primaryFault: "rounded spine",
     videoCandidate: false,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "calf-stretch",
@@ -520,7 +520,7 @@ var MGT_EXERCISES = [
     primaryFault: "heel lift",
     videoCandidate: false,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "shoulder-wall-slides",
@@ -541,7 +541,7 @@ var MGT_EXERCISES = [
     primaryFault: "low-back arch",
     videoCandidate: true,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "childs-pose",
@@ -562,7 +562,7 @@ var MGT_EXERCISES = [
     primaryFault: "tension",
     videoCandidate: false,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   },
   {
     id: "supported-deep-squat-hold",
@@ -583,6 +583,6 @@ var MGT_EXERCISES = [
     primaryFault: "heel lift",
     videoCandidate: true,
     approved: true,
-    approvedNote: "Approved by Ivan 2026-07-08 — Ivan-prompt batch (character-referenced)"
+    approvedNote: "Approved by Ivan 2026-07-11 — Nano Banana Pro batch (gemini-3-pro-image, Ivan verbatim prompts + his two cards as character refs)",
   }
 ];

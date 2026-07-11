@@ -55,6 +55,29 @@ B2. RE-ROLLS DO NOT CONVERGE. Re-rolling a garbled card moves the garble to
 B3. COST/YIELD: 2 rounds = ~45 images = ~$9; per-card fully-clean-text
     rate ~10%. Budget accordingly; do not brute-force text quality via API.
 
+B6. NANO BANANA PRO FULL BATCH (2026-07-09/11, gemini-3-pro-image via
+    scripts/generate-cards-gemini.mjs, ~31 billed renders ≈ $4.5):
+    - TEXT: ~83% of renders fully clean (vs ~10% for gpt-image-1). The
+      B1 garbling class is gone; the residual text failures are different:
+      whole mistake/correct sentences OMITTED, a stray watermark-like
+      artifact ("Pebd5e1"), one hallucinated extra panel ("Roating"), one
+      word insertion. Re-rolls DO largely converge here (5/7 quality
+      retries improved) — unlike gpt-image-1 (B2).
+    - Output 2048px = 2x print resolution of the old library.
+    - Style drifts per card (photoreal, flat-2D, mannequin-grey, orange
+      anatomy panels) but a single retry usually snaps it back.
+    - PERSISTENT 500s: the API refused the neck-mobility and hip-circles
+      requests 4x in a row (server error, prompt-specific) while every
+      other prompt succeeded. Don't burn retries on a prompt that 500s
+      twice — park it and try another day.
+    - Weakest spots unchanged: contralateral choreography (dead-bug) and
+      equipment continuity (band vanished in one frame). Human review
+      gate per card remains mandatory.
+    - Final: 20/24 generated cards live at PASS or minor-tolerated level;
+      4 fails kept with defects (dead-bug, band-overhead-press,
+      neck-mobility, hip-circles) — fix path per B2: Ivan re-renders in
+      ChatGPT, or accept. Old gpt cards all in images/_attempts/.
+
 B4. DEAD PIPELINES: the original 7-item standard-prompt pipeline and the
     per-defect repair loop (whack-a-mole inpainting/regeneration) are
     ABANDONED. Do not resurrect them. generate-cards.mjs is superseded by
