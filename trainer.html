@@ -19,7 +19,12 @@
   RULES (docs/prd.md):
   - Cards render only once approved:true in exercises.js (human approval gate).
   - Log store: localStorage "mgt.log.v1" — { version: 1, entries: LogEntry[] }.
-    LogEntry: { id, date (ISO), sessionId, completed: string[], note? }.
+    LogEntry: { id, date (ISO), sessionId, completed: string[], note?,
+    warmup?: "done"|"skipped" (strength sessions only, FR-019) }.
+  - Habit Engine (FR-017..019): plan.weeklySchedule drives the "Today is…"
+    lead — always a SUGGESTION with every session one tap away, never
+    enforcement. Adherence copy is a forgiveness metric ("2+ strength
+    sessions this week", weekly reset) — no streak counters anywhere.
   - Active plan id: localStorage "mgt.activePlan".
   - Plan start date (drives "this week's target"): localStorage "mgt.startDate.<planId>".
   - Print (FR-004): @media print renders the current session as an A4 sheet
@@ -54,6 +59,9 @@ button{font:inherit}
 .linkrow a{color:var(--blue);font-weight:600;text-decoration:none;margin-right:18px;cursor:pointer}
 .session-pick{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;min-height:44px;cursor:pointer;transition:background 120ms ease}
 .session-pick:hover{background:var(--blue2)}
+.session-pick.today-lead{border:2px solid var(--blue)}
+.checklist label{display:block;margin:7px 0;font-size:14px}
+.checklist input{width:18px;height:18px;vertical-align:-3px;margin-right:8px}
 .session-pick[disabled]{cursor:default;opacity:.65}
 .session-pick[disabled]:hover{background:var(--card)}
 .exercise-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(15,23,42,.04);display:flex;flex-direction:column}
@@ -285,6 +293,38 @@ function stageText(cs) {
   return txt;
 }
 
+/* ── Schedule + habit helpers (FR-017/FR-018) ── */
+var DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+var DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+function scheduledSession(plan, d) {
+  var ws = plan.weeklySchedule;
+  if (!ws) return null;
+  var id = ws[DAY_KEYS[d.getDay()]];
+  if (!id) return null;
+  return plan.sessions.find(function (s) { return s.id === id; }) || null;
+}
+function warmupSession(plan) {
+  return plan.sessions.find(function (s) { return s.kind === "warmup"; }) || null;
+}
+/* Forgiveness metric: strength sessions this ISO week (resets weekly) and
+   days since the last one. Never a streak — one bad week leaves the next
+   week's display untouched by design (FR-018). */
+function strengthStats(plan) {
+  var ids = {};
+  plan.sessions.forEach(function (s) { if (s.kind === "strength") ids[s.id] = true; });
+  var now = new Date(), wk = isoWeekKey(now);
+  var count = 0, last = null;
+  loadLog().entries.forEach(function (en) {
+    if (!ids[en.sessionId]) return;
+    if (isoWeekKey(new Date(en.date)) === wk) count++;
+    if (!last || en.date > last) last = en.date;
+  });
+  return {
+    weekCount: count,
+    daysSince: last === null ? null : Math.floor((now - new Date(last)) / 86400000)
+  };
+}
+
 /* ── Log store (FR-006..010) ── */
 var LOG_KEY = "mgt.log.v1";
 var memLog = null;        // in-memory truth; never lost on storage failure
@@ -360,7 +400,16 @@ function importLog(file, mode, cb) {
 /* ── UI ── */
 var viewEl = document.getElementById("view");
 var bannerEl = document.getElementById("banner");
-var state = { view: "today", sessionId: null, done: {} };
+var state = { view: "today", sessionId: null, done: {}, phase: "main", warmup: null };
+/* FR-019: strength sessions default through the warm-up phase; everything
+   else (and plans without a warm-up session) goes straight to the cards. */
+function openSession(id) {
+  var plan = activePlan();
+  var session = plan.sessions.find(function (s) { return s.id === id; });
+  state.view = "session"; state.sessionId = id; state.done = {}; state.warmup = null;
+  state.phase = (session && session.kind === "strength" && warmupSession(plan)) ? "warmup" : "main";
+  clearBanner(); render();
+}
 function showBanner(kind, text) {
   var cls = kind === "err" ? "errbox" : kind === "ok" ? "okbox" : "warnbox";
   bannerEl.innerHTML = "<div class='" + cls + "'>" + text + "</div>";
@@ -383,10 +432,30 @@ function renderToday() {
     html += "<div class='warnbox'>Set your start date to begin week tracking:<br><br>" +
       "<input type='date' id='start-date'> <button class='btn' id='save-start'>Save start date</button></div>";
   }
-  html += "<p><span class='pill'>" + weekCount() + " session" + (weekCount() === 1 ? "" : "s") + " this week</span></p>";
+  // FR-018 forgiveness metric: weekly reset, target framing, no streaks.
+  var ss = strengthStats(plan);
+  html += "<p><span class='pill'>" + ss.weekCount + " strength session" + (ss.weekCount === 1 ? "" : "s") + " this week (target 2+)</span>" +
+    "<span class='pill'>" + weekCount() + " total</span></p>";
+  if (ss.daysSince !== null && ss.daysSince >= 3) {
+    html += "<p class='muted'>Last strength session was " + ss.daysSince + " days ago. The field rule is forgiving: never skip twice in a row — any strength session below counts.</p>";
+  }
   html += "</div>";
 
-  html += "<h2>Sessions</h2>";
+  // FR-017: today's suggested session leads; a rest day suggests recovery.
+  // Always a suggestion — every session stays one tap away below.
+  var todayDate = new Date();
+  var lead = scheduledSession(plan, todayDate);
+  html += "<h2>Today is " + DAY_NAMES[todayDate.getDay()] + "</h2>";
+  if (lead) {
+    var lac = approvedCount(lead), lready = lac > 0;
+    html += "<button class='session-pick today-lead' data-session='" + lead.id + "'" + (lready ? "" : " disabled") + ">" +
+      "<h3>→ " + esc(lead.title) + "</h3><p class='muted'>" + esc(lead.purpose) + "</p>" +
+      "<span class='pill'>Suggested for today — tap to start</span></button>";
+  } else {
+    html += "<div class='card'><h3>Recovery day</h3><p class='muted'>Nothing scheduled — walk, stretch, rest. If you feel like moving, any session below is one tap away.</p></div>";
+  }
+
+  html += "<h2>All sessions</h2>";
   plan.sessions.forEach(function (s) {
     var ac = approvedCount(s), total = s.exerciseIds.length;
     var ready = ac > 0;
@@ -410,7 +479,7 @@ function renderToday() {
     setStartDate(plan, v); clearBanner(); renderToday();
   };
   viewEl.querySelectorAll(".session-pick[data-session]:not([disabled])").forEach(function (b) {
-    b.onclick = function () { state.view = "session"; state.sessionId = b.dataset.session; state.done = {}; clearBanner(); render(); };
+    b.onclick = function () { openSession(b.dataset.session); };
   });
   document.getElementById("go-history").onclick = function () { state.view = "history"; clearBanner(); render(); };
   document.getElementById("do-export").onclick = exportLog;
@@ -435,13 +504,67 @@ function renderToday() {
   };
 }
 
+/* Shared card body (image + text block); caller appends toggles/print
+   extras and the closing </div>. */
+function exerciseCardHtml(ex, dose) {
+  var html = "<div class='exercise-card'>";
+  if (ex.approved && ex.image) {
+    html += "<img class='screen-img' src='" + ex.image + "' alt='" + esc(ex.name) + " instructional illustration' " +
+      "onerror=\"this.outerHTML='<div class=placeholder>Illustration file missing — follow the cues below</div>'\">";
+    html += "<img class='print-only' src='" + (ex.printImage || ex.image) + "' alt='" + esc(ex.name) + " instructional illustration (print)'>";
+  } else {
+    html += "<div class='placeholder'>Illustration pending approval — follow the cues below</div>";
+  }
+  html += "<h3 style='margin-top:10px'>" + esc(ex.name) + "</h3><p class='dose'>" + esc(dose) + "</p>";
+  html += "<p class='works'><b>Works:</b> " + esc(ex.muscles) + "</p>";
+  html += "<div class='mistake'><span class='no'>✗ " + esc(ex.commonMistake) + "</span><br><span class='yes'>✓ " + esc(ex.correct) + "</span></div>";
+  html += "<ul class='cues'>" + ex.cues.map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + "</ul>";
+  if (ex.videoUrl) html += "<div class='qr-wrap' data-url='" + esc(ex.videoUrl) + "'><canvas aria-label='QR code to demo video'></canvas><p class='muted'>Scan for the demo video</p></div>";
+  return html;
+}
+
+/* FR-019 warm-up-first phase: the 8 warm-up cards, the KB §4 completion
+   checklist (self-check, never a gate), one button forward, visible skip. */
+function renderWarmup(plan, session) {
+  var wu = warmupSession(plan);
+  var html = "<div class='linkrow'><a id='back-today'>← Today</a><a id='skip-warmup'>Skip warm-up → " + esc(session.title) + "</a></div>";
+  html += "<h2>Warm-up first</h2><p class='muted'>" + esc(wu.purpose) + ". " + esc(session.title) + " starts right after.</p>";
+  html += "<div class='grid'>";
+  wu.exerciseIds.forEach(function (id) {
+    var ex = exercisesById[id];
+    if (!ex) return;
+    var dose = (wu.doseOverrides && wu.doseOverrides[id]) || ex.dose;
+    html += exerciseCardHtml(ex, dose) + "</div>";
+  });
+  html += "</div>";
+  var checklist = plan.warmupChecklist || [];
+  if (checklist.length) {
+    html += "<div class='card'><h3>Warm-up completion checklist</h3><div class='checklist'>" +
+      checklist.map(function (item) { return "<label><input type='checkbox'> " + esc(item) + "</label>"; }).join("") +
+      "</div><p class='muted'>A quick self-check — not a gate.</p></div>";
+  }
+  html += "<div class='bottom-cta'><button class='btn green' id='finish-warmup'>Warm-up done — start " + esc(session.title) + "</button></div>";
+  viewEl.innerHTML = html;
+  document.getElementById("back-today").onclick = function () { state.view = "today"; clearBanner(); render(); };
+  document.getElementById("skip-warmup").onclick = function () { state.phase = "main"; state.warmup = "skipped"; render(); window.scrollTo(0, 0); };
+  document.getElementById("finish-warmup").onclick = function () { state.phase = "main"; state.warmup = "done"; render(); window.scrollTo(0, 0); };
+  viewEl.querySelectorAll(".qr-wrap").forEach(function (w) {
+    QR.draw(w.querySelector("canvas"), w.dataset.url, 4);
+  });
+  window.scrollTo(0, 0);
+}
+
 function renderSession() {
   var plan = activePlan();
   var session = plan.sessions.find(function (s) { return s.id === state.sessionId; });
   if (!session) { state.view = "today"; return renderToday(); }
+  if (state.phase === "warmup") return renderWarmup(plan, session);
   var cs = currentStage(plan, new Date());
   var html = "<div class='linkrow'><a id='back-today'>← Today</a><a id='print-sheet'>Print sheet</a></div>";
   html += "<h2>" + esc(session.title) + "</h2><p class='muted'>" + esc(session.purpose) + "</p>";
+  if (session.kind === "strength" && state.warmup) {
+    html += "<p class='muted'>Warm-up: " + (state.warmup === "done" ? "done ✓" : "skipped — next time it takes 5–7 min") + "</p>";
+  }
   html += "<p class='print-only print-head'>Date: ____________________" +
     (cs ? " &nbsp;·&nbsp; Target: " + esc(stageText(cs)) : "") + "</p>";
   if (cs) html += "<div class='target-banner'><b>This week's target:</b> " + esc(stageText(cs)) + "</div>";
@@ -450,20 +573,8 @@ function renderSession() {
     var ex = exercisesById[id];
     if (!ex) return;
     var isDone = !!state.done[id];
-    html += "<div class='exercise-card'>";
-    if (ex.approved && ex.image) {
-      html += "<img class='screen-img' src='" + ex.image + "' alt='" + esc(ex.name) + " instructional illustration' " +
-        "onerror=\"this.outerHTML='<div class=placeholder>Illustration file missing — follow the cues below</div>'\">";
-      html += "<img class='print-only' src='" + (ex.printImage || ex.image) + "' alt='" + esc(ex.name) + " instructional illustration (print)'>";
-    } else {
-      html += "<div class='placeholder'>Illustration pending approval — follow the cues below</div>";
-    }
     var dose = (session.doseOverrides && session.doseOverrides[id]) || ex.dose;
-    html += "<h3 style='margin-top:10px'>" + esc(ex.name) + "</h3><p class='dose'>" + esc(dose) + "</p>";
-    html += "<p class='works'><b>Works:</b> " + esc(ex.muscles) + "</p>";
-    html += "<div class='mistake'><span class='no'>✗ " + esc(ex.commonMistake) + "</span><br><span class='yes'>✓ " + esc(ex.correct) + "</span></div>";
-    html += "<ul class='cues'>" + ex.cues.map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + "</ul>";
-    if (ex.videoUrl) html += "<div class='qr-wrap' data-url='" + esc(ex.videoUrl) + "'><canvas aria-label='QR code to demo video'></canvas><p class='muted'>Scan for the demo video</p></div>";
+    html += exerciseCardHtml(ex, dose);
     html += "<p class='print-only print-check'><span class='box'></span>Completed &nbsp; Sets: ______ &nbsp; Notes: ________________</p>";
     html += "<button class='done-toggle" + (isDone ? " on" : "") + "' data-ex='" + id + "' aria-pressed='" + isDone + "'>" + (isDone ? "✓ Done" : "Mark done") + "</button>";
     html += "</div>";
@@ -499,8 +610,9 @@ function renderSession() {
       sessionId: session.id,
       completed: completed
     };
+    if (session.kind === "strength" && state.warmup) entry.warmup = state.warmup;
     saveEntry(entry);
-    state.view = "today"; state.done = {};
+    state.view = "today"; state.done = {}; state.warmup = null;
     showBanner("ok", "Session logged: " + esc(session.title) + " — " + completed.length + "/" + session.exerciseIds.length + " exercises. Well done.");
     render();
   };
@@ -520,8 +632,9 @@ function renderHistory() {
     entries.forEach(function (en) {
       var d = new Date(en.date);
       var sTotal = (plan.sessions.find(function (s) { return s.id === en.sessionId; }) || { exerciseIds: [] }).exerciseIds.length;
+      var wuMark = en.warmup === "done" ? " <span class='muted'>· warm-up ✓</span>" : en.warmup === "skipped" ? " <span class='muted'>· no warm-up</span>" : "";
       html += "<div class='history-row'><span>" + d.toLocaleDateString() + " <span class='muted'>" + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + "</span></span>" +
-        "<span>" + esc(titles[en.sessionId] || en.sessionId) + "</span>" +
+        "<span>" + esc(titles[en.sessionId] || en.sessionId) + wuMark + "</span>" +
         "<span class='muted'>" + en.completed.length + "/" + (sTotal || "?") + "</span></div>";
     });
     html += "</div>";
@@ -543,10 +656,10 @@ function render() {
   else renderToday();
 }
 /* Deep link: trainer.html#session/<id> opens that session directly
-   (bookmarkable on a phone; also used to verify the print sheet). */
+   (bookmarkable on a phone; also used to verify the print sheet).
+   Goes through openSession so strength links still warm up first. */
 var hashMatch = location.hash.match(/^#session\/([\w-]+)$/);
-if (hashMatch) { state.view = "session"; state.sessionId = hashMatch[1]; }
-render();
+if (hashMatch) { openSession(hashMatch[1]); } else { render(); }
 </script>
 </body>
 </html>

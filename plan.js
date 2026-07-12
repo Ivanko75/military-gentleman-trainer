@@ -20,9 +20,32 @@ var MGT_PLANS = [
     name: "Foundation Plan v1",
     source: "military_gentleman_knowledge_base.html",
     startDate: null,
+    // KB §3 weekly routine (FR-017). Data, not code: a future plan remaps
+    // days here. null = recovery day. The runtime treats this as a
+    // SUGGESTION with one-tap override — never enforcement.
+    weeklySchedule: {
+      mon: "strength-a",
+      tue: "mobility",
+      wed: "strength-b",
+      thu: "mobility",
+      fri: "strength-a",
+      sat: "mobility",
+      sun: null
+    },
+    // KB §4 warm-up completion checklist, shown at the end of the
+    // warm-up-first flow (FR-019). A self-check ritual, never a gate.
+    warmupChecklist: [
+      "Neck feels loose",
+      "Shoulders relaxed",
+      "Hips moving freely",
+      "Knees comfortable",
+      "Slightly warmer",
+      "Breathing controlled"
+    ],
     sessions: [
       {
         id: "warmup",
+        kind: "warmup",
         title: "Warm-up",
         purpose: "Prepare joints, muscles and nervous system — 5–7 min before every strength session",
         exerciseIds: [
@@ -40,6 +63,7 @@ var MGT_PLANS = [
       },
       {
         id: "strength-a",
+        kind: "strength",
         title: "Strength A",
         purpose: "Push, pull, squat, core — 30–40 min",
         exerciseIds: [
@@ -52,6 +76,7 @@ var MGT_PLANS = [
       },
       {
         id: "strength-b",
+        kind: "strength",
         title: "Strength B",
         purpose: "Shoulders, back, legs, core — 30–40 min",
         exerciseIds: [
@@ -65,6 +90,7 @@ var MGT_PLANS = [
       },
       {
         id: "mobility",
+        kind: "mobility",
         title: "Mobility",
         purpose: "Recovery and joint quality — 12–18 min on non-strength days or after workouts",
         exerciseIds: [
